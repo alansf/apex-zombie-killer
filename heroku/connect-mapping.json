@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "connections": [
+    {
+      "name": "salesforce",
+      "mappings": [
+        { "object_name": "Account", "config": { "access": "read_only", "exclude_system_fields": true } },
+        { "object_name": "Opportunity", "config": { "access": "read_only", "exclude_system_fields": true } }
+      ]
+    }
+  ]
+}
+
+

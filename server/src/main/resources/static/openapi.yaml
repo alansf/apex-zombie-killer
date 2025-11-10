@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Apex Performance Offload API
+  version: "1.0.0"
+servers:
+  - url: https://apex-perf-demo-{USER}.herokuapp.com
+paths:
+  /jobs/product-purchase/run:
+    post:
+      operationId: runProductPurchase
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /jobs/revenue-file-import/run:
+    post:
+      operationId: runRevenueFileImport
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /jobs/account-plan-reporting/run:
+    post:
+      operationId: runAccountPlanReporting
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /jobs/cpq-quote-oppty-sync/run:
+    post:
+      operationId: runCpqQuoteOpptySync
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /jobs/opportunity-split/run:
+    post:
+      operationId: runOpportunitySplit
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /transform/apex-to-java:
+    post:
+      operationId: apexToJava
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apexCode:
+                  type: string
+                options:
+                  type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  javaCode:
+                    type: string
+                  testCode:
+                    type: string
+                  notes:
+                    type: string
+  /transform/apex-to-js:
+    post:
+      operationId: apexToJs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apexCode:
+                  type: string
+                options:
+                  type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jsCode:
+                    type: string
+                  notes:
+                    type: string
+components:
+  schemas:
+    DateRange:
+      type: object
+      properties:
+        from: { type: string }
+        to: { type: string }
+    JobRequest:
+      type: object
+      properties:
+        batchSize: { type: integer, default: 1000 }
+        maxConcurrency: { type: integer, default: 4 }
+        dateRange: { $ref: '#/components/schemas/DateRange' }
+        dryRun: { type: boolean, default: false }
+    JobResponse:
+      type: object
+      properties:
+        jobId: { type: string }
+        status: { type: string }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        notes: { type: string }
+
+
+
