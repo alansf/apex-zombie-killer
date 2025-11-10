@@ -1,0 +1,16 @@
+server:
+  port: 8080
+spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  datasource:
+    # Heroku provides DATABASE_URL; local override as needed
+    driver-class-name: org.postgresql.Driver
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+
