@@ -80,9 +80,6 @@ public class InferenceClient {
 				return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
 			}
 			return Optional.of(res.getBody());
-		} catch (RestClientException | RuntimeException ex) {
-			log.error("Inference error", ex);
-			return Optional.empty();
 		} catch (Exception ex) {
 			log.error("Inference unexpected error", ex);
 			return Optional.empty();
