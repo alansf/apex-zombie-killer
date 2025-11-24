@@ -5,7 +5,10 @@ spring:
     serialization:
       write-dates-as-timestamps: false
   datasource:
-    # Heroku provides DATABASE_URL; local override as needed
+    # Bind to Heroku-provided JDBC/DATABASE env vars
+    url: ${JDBC_DATABASE_URL:${DATABASE_URL:}}
+    username: ${JDBC_DATABASE_USERNAME:}
+    password: ${JDBC_DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
   main:
     banner-mode: "off"
