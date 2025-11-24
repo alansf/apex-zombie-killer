@@ -2,7 +2,7 @@
 <CspTrustedSite xmlns="http://soap.sforce.com/2006/04/metadata">
 	<context>LightningComponent</context>
 	<enableAria>true</enableAria>
-	<endpointUrl>https://apex-zombie-killer-6f48e437a14e.herokuapp.com</endpointUrl>
+	<endpointUrl>https://apex-zombie-killer.herokuapp.com</endpointUrl>
 	<isActive>true</isActive>
 	<description>Trusted site for embedding Heroku app via LWC iframe</description>
 </CspTrustedSite>

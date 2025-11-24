@@ -35,31 +35,31 @@ sf apex run --file scripts/seed_data.apex --target-org apex-perf-demo
 ### Heroku (App, Postgres, Connect, Deploy)
 ```bash
 heroku login
-heroku apps:info -a apex-zombie-killer-6f48e437a14e
-heroku stack:set heroku-22 -a apex-zombie-killer-6f48e437a14e
-heroku buildpacks:add heroku/java -a apex-zombie-killer-6f48e437a14e
-heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer-6f48e437a14e
+heroku apps:info -a apex-zombie-killer
+heroku stack:set heroku-22 -a apex-zombie-killer
+heroku buildpacks:add heroku/java -a apex-zombie-killer
+heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer
 heroku plugins:install heroku-connect
-heroku addons:create herokuconnect:demo -a apex-zombie-killer-6f48e437a14e
+heroku addons:create herokuconnect:demo -a apex-zombie-killer
 
 # Import starter mapping
-heroku connect:import heroku/connect-mapping.json -a apex-zombie-killer-6f48e437a14e
+heroku connect:import heroku/connect-mapping.json -a apex-zombie-killer
 
 # Build and deploy server
 cd server
 ./mvnw -q -DskipTests package || mvn -q -DskipTests package
-heroku git:remote -a apex-zombie-killer-6f48e437a14e
+heroku git:remote -a apex-zombie-killer
 git add . && git commit -m "server: initial" || true
 git push heroku main
 ```
 
 ### Heroku AppLink (Salesforce UI)
-- Salesforce Setup → Heroku → Link Heroku App → select `apex-zombie-killer-6f48e437a14e`.
+- Salesforce Setup → Heroku → Link Heroku App → select `apex-zombie-killer`.
 - Add the AppLink surface to your Salesforce app (utility bar or app launcher).
 - AppLink is for SSO/UX; use Named Credential or External Services for API callouts.
 
 ### External Services / Named Credential
-- Serve OpenAPI at: `https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi.yaml`
+- Serve OpenAPI at: `https://apex-zombie-killer.herokuapp.com/openapi.yaml`
 - Setup → External Services → Add Service → paste URL above → choose Named Credential.
 - Or call via Apex using a Named Credential endpoint `callout:HerokuJobs/...`.
 
@@ -106,7 +106,7 @@ Key targets:
 ## Notes
 - The transform API is stubbed to return the input with light scaffolding. Set `ANTHROPIC_API_KEY` and implement model wiring in `TransformService` to enable real conversions.
 - For production, secure CORS/headers and replace demo-wide open CORS.
- - Default app used in examples: `apex-zombie-killer-6f48e437a14e`. Update commands if you use a different app name.
+ - Default app used in examples: `apex-zombie-killer`. Update commands if you use a different app name.
 
 
 

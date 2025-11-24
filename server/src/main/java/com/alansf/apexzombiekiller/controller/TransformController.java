@@ -30,8 +30,8 @@ public class TransformController {
 
 	@GetMapping(value = "/openapi-generated.yaml", produces = "application/yaml")
 	public String generatedOpenApi() {
-		// Best-effort derive server URL from env or request-origin; here use env var or fall back to placeholder
-		String url = System.getenv().getOrDefault("APP_BASE_URL", "https://apex-zombie-killer-6f48e437a14e.herokuapp.com");
+		// Best-effort derive server URL from env or request-origin; here use env var or fall back to canonical
+		String url = System.getenv().getOrDefault("APP_BASE_URL", "https://apex-zombie-killer.herokuapp.com");
 		return openApiService.generateYaml(url);
 	}
 }

@@ -1,19 +1,19 @@
 ## Demo Runbook - AppLink (user-plus) Web Dyno + Code Execution
 
-1) Heroku (app = apex-zombie-killer-6f48e437a14e)
-- heroku apps:info -a apex-zombie-killer-6f48e437a14e
-- heroku buildpacks:add heroku/java -a apex-zombie-killer-6f48e437a14e
+1) Heroku (app = apex-zombie-killer)
+- heroku apps:info -a apex-zombie-killer
+- heroku buildpacks:add heroku/java -a apex-zombie-killer
 - (if required by AppLink) add service mesh buildpack before java
-- heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer-6f48e437a14e
+- heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer
 - heroku plugins:install heroku-connect
-- heroku addons:create herokuconnect:demo -a apex-zombie-killer-6f48e437a14e
-- heroku connect:import heroku/connect-mapping.json -a apex-zombie-killer-6f48e437a14e
+- heroku addons:create herokuconnect:demo -a apex-zombie-killer
+- heroku connect:import heroku/connect-mapping.json -a apex-zombie-killer
 - Deploy server (subtree): git subtree push --prefix server heroku main
 
 ### Managed Inference (MCP) env
-- heroku addons:create <managed-inference-addon> -a apex-zombie-killer-6f48e437a14e
-- heroku config:set INFERENCE_MODEL=\"anthropic/claude-3.5-sonnet\" -a apex-zombie-killer-6f48e437a14e
-- heroku config:set INFERENCE_ENDPOINT=\"https://inference.herokuapi.com\" -a apex-zombie-killer-6f48e437a14e
+- heroku addons:create <managed-inference-addon> -a apex-zombie-killer
+- heroku config:set INFERENCE_MODEL=\"anthropic/claude-3.5-sonnet\" -a apex-zombie-killer
+- heroku config:set INFERENCE_ENDPOINT=\"https://inference.herokuapi.com\" -a apex-zombie-killer
 
 2) AppLink publish (user-plus)
 - heroku salesforce:publish apispec.yaml \
@@ -21,15 +21,15 @@
   --connection-name purple-zombie \
   --authorization-connected-app-name "MyAppLinkApp" \
   --authorization-permission-set-name "ManageHerokuAppLink" \
-  -a apex-zombie-killer-6f48e437a14e
+  -a apex-zombie-killer
 
 3) Salesforce org
 - sf org login web --set-default-dev-hub --alias DevHub
 - sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias apex-perf-demo
 - sf project deploy start --source-dir force-app --target-org apex-perf-demo
 - (Optional) sf apex run --file scripts/seed_examples.apex --target-org apex-perf-demo
-- Setup → External Services → Add Service → https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi.yaml
-- Setup → Heroku → Link apex-zombie-killer-6f48e437a14e
+- Setup → External Services → Add Service → https://apex-zombie-killer.herokuapp.com/openapi.yaml
+- Setup → Heroku → Link apex-zombie-killer
 
 4) Use the UI
 - Open AppLink UI (SSO)

@@ -2,7 +2,7 @@ import { LightningElement, api } from 'lwc';
 
 export default class HerokuAppContainer extends LightningElement {
 	@api appUrl; // Optional override
-	src = 'https://apex-zombie-killer-6f48e437a14e.herokuapp.com/';
+	src = 'https://apex-zombie-killer.herokuapp.com/';
 
 	connectedCallback() {
 		if (this.appUrl && typeof this.appUrl === 'string') {

@@ -3,7 +3,7 @@ info:
   title: Apex Performance Offload API
   version: "1.0.0"
 servers:
-  - url: https://apex-zombie-killer-6f48e437a14e.herokuapp.com
+  - url: https://apex-zombie-killer.herokuapp.com
 paths:
   /jobs/product-purchase/run:
     post:

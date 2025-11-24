@@ -16,7 +16,7 @@ x-applink:
     connectedAppName: MyAppLinkApp
     permissionSetName: ManageHerokuAppLink
 servers:
-  - url: https://apex-zombie-killer-6f48e437a14e.herokuapp.com
+  - url: https://apex-zombie-killer.herokuapp.com
 paths:
   /code/registrations:
     post:
