@@ -139,6 +139,108 @@ paths:
                     type: string
                   notes:
                     type: string
+  /code/registrations:
+    post:
+      operationId: registerCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                language: { type: string, enum: [java, js] }
+                source: { type: string }
+                metadata: { type: object }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  status: { type: string }
+  /code/registrations/{id}:
+    get:
+      operationId: getCode
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformedCode'
+  /code/execute/{id}:
+    post:
+      operationId: executeById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload: { type: object }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionAudit'
+  /code/execute-by-name/{name}:
+    post:
+      operationId: executeByName
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload: { type: object }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionAudit'
+  /code/examples:
+    get:
+      operationId: listExamples
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    language: { type: string }
+                    source: { type: string }
 components:
   schemas:
     DateRange:
@@ -161,6 +263,28 @@ components:
         startedAt: { type: string, format: date-time }
         completedAt: { type: string, format: date-time, nullable: true }
         notes: { type: string }
+    TransformedCode:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        language: { type: string }
+        source: { type: string }
+        metadataJson: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        createdBy: { type: string }
+    ExecutionAudit:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        codeId: { type: string, format: uuid }
+        codeName: { type: string }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string }
+        error: { type: string }
+        inputJson: { type: string }
 
 
 
