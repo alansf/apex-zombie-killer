@@ -1,0 +1,15 @@
+{
+  "name": "check_openapi",
+  "description": "Fetch and validate the OpenAPI document from a URL",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "OpenAPI URL" }
+    },
+    "required": ["url"],
+    "additionalProperties": false
+  }
+}
+
+
+

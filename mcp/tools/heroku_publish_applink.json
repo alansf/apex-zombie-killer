@@ -1,0 +1,20 @@
+{
+  "name": "heroku_publish_applink",
+  "description": "Publish an OpenAPI spec to Salesforce via Heroku AppLink",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "specPath": { "type": "string", "description": "Path to OpenAPI spec (e.g., apispec.yaml)" },
+      "clientName": { "type": "string", "description": "Client name (e.g., HerokuAPI)" },
+      "connectionName": { "type": "string", "description": "Connection name (e.g., purple-zombie)" },
+      "connectedAppName": { "type": "string", "description": "Salesforce Connected App name" },
+      "permissionSetName": { "type": "string", "description": "Session-based permission set name" },
+      "app": { "type": "string", "description": "Heroku app name" }
+    },
+    "required": ["specPath", "clientName", "connectionName", "connectedAppName", "permissionSetName", "app"],
+    "additionalProperties": false
+  }
+}
+
+
+
