@@ -4,6 +4,7 @@ import com.alansf.apexzombiekiller.model.ExecutionAudit;
 import com.alansf.apexzombiekiller.model.TransformedCode;
 import com.alansf.apexzombiekiller.repo.CodeRepository;
 import com.alansf.apexzombiekiller.service.ExecutionService;
+import com.alansf.apexzombiekiller.service.PublishService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,10 +17,12 @@ import java.util.*;
 public class CodeController {
 	private final CodeRepository repo;
 	private final ExecutionService exec;
+	private final PublishService publish;
 
-	public CodeController(CodeRepository repo, ExecutionService exec) {
+	public CodeController(CodeRepository repo, ExecutionService exec, PublishService publish) {
 		this.repo = repo;
 		this.exec = exec;
+		this.publish = publish;
 	}
 
 	public static class RegisterRequest {
@@ -32,6 +35,18 @@ public class CodeController {
 		public UUID id;
 		public String name;
 		public String status;
+	}
+	public static class ApproveRequest {
+		public String name;
+		public String language;
+		public String source;
+		public Map<String, Object> metadata;
+	}
+	public static class ApproveResponse {
+		public UUID id;
+		public String name;
+		public String status;
+		public String notes;
 	}
 	public static class ExecuteRequest {
 		public Map<String, Object> payload;
@@ -53,6 +68,32 @@ public class CodeController {
 		return repo.findById(id).orElseThrow();
 	}
 
+	@PostMapping("/code/approve")
+	public ApproveResponse approve(@RequestBody ApproveRequest req, @RequestHeader(value="x-sf-user", required=false) String sfUser) {
+		if (req == null || req.name == null || req.language == null || req.source == null) {
+			throw new IllegalArgumentException("name, language, and source are required");
+		}
+		// Smoke test compile/exec
+		try {
+			if ("java".equalsIgnoreCase(req.language)) {
+				new com.alansf.apexzombiekiller.service.JavaExecutionAdapter().execute("com.demo.jobs.UserCode", req.source);
+			} else if ("js".equalsIgnoreCase(req.language)) {
+				new com.alansf.apexzombiekiller.service.JsExecutionAdapter().execute(req.source);
+			}
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Compilation/runtime check failed: " + e.getMessage());
+		}
+		String metadataJson = req.metadata == null ? "{}" : com.alansf.apexzombiekiller.service.JsonUtils.toJson(req.metadata);
+		TransformedCode code = repo.upsertCode(req.name, req.language, req.source, metadataJson, sfUser);
+		ApproveResponse r = new ApproveResponse();
+		r.id = code.id;
+		r.name = code.name;
+		r.status = code.status;
+		String jobId = publish.queueRepublish();
+		r.notes = "Approved and ready. Use /code/execute-by-name/" + code.name + " or /ext/" + code.name + "/run. Publish job=" + jobId;
+		return r;
+	}
+
 	@PostMapping("/code/execute/{id}")
 	public ExecutionAudit executeById(@PathVariable UUID id, @RequestBody(required = false) ExecuteRequest req) {
 		Map<String, Object> payload = req == null ? Map.of() : Optional.ofNullable(req.payload).orElse(Map.of());
@@ -61,6 +102,12 @@ public class CodeController {
 
 	@PostMapping("/code/execute-by-name/{name}")
 	public ExecutionAudit executeByName(@PathVariable String name, @RequestBody(required = false) ExecuteRequest req) {
+		Map<String, Object> payload = req == null ? Map.of() : Optional.ofNullable(req.payload).orElse(Map.of());
+		return exec.executeByName(name, payload);
+	}
+
+	@PostMapping("/ext/{name}/run")
+	public ExecutionAudit extExecute(@PathVariable String name, @RequestBody(required = false) ExecuteRequest req) {
 		Map<String, Object> payload = req == null ? Map.of() : Optional.ofNullable(req.payload).orElse(Map.of());
 		return exec.executeByName(name, payload);
 	}

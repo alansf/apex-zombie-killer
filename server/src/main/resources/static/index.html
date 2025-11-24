@@ -37,6 +37,11 @@
         <button id="btnTransform">Transform</button>
         <span class="chip" id="status"></span>
       </div>
+      <div class="row section">
+        <label>Name:</label>
+        <input id="codeName" placeholder="Name for approval (e.g., Demo)" style="height:36px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e2e8f0;padding:0 10px;" />
+        <button id="btnApprove">Approve & Publish</button>
+      </div>
       <div class="section">
         <pre id="notes"></pre>
       </div>
@@ -63,6 +68,7 @@
       const target = $('target')
       const statusEl = $('status')
       const jobOut = $('jobOut')
+      const codeName = $('codeName')
 
       async function transform() {
         statusEl.textContent = 'Working…'
@@ -101,6 +107,31 @@
       document.getElementById('btnTransform').addEventListener('click', transform)
       document.querySelectorAll('.job').forEach(btn => {
         btn.addEventListener('click', () => runJob(btn.dataset.path))
+      })
+      document.getElementById('btnApprove').addEventListener('click', async () => {
+        const name = (codeName.value || '').trim()
+        if (!name) { notes.textContent = 'Enter a name before approving.'; return }
+        if (!out.textContent) { notes.textContent = 'Transform code first.'; return }
+        statusEl.textContent = 'Approving…'
+        try {
+          const res = await fetch('/code/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name,
+              language: target.value,
+              source: out.textContent,
+              metadata: { approvedBy: 'ui', ts: new Date().toISOString() }
+            })
+          })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data?.message || 'Approve failed')
+          notes.textContent = JSON.stringify(data, null, 2)
+          statusEl.textContent = 'Published'
+        } catch (e) {
+          statusEl.textContent = 'Error'
+          notes.textContent = e?.message || 'Approve failed'
+        }
       })
     </script>
   </body>

@@ -67,6 +67,20 @@ public class CodeRepository {
 		return list.stream().findFirst();
 	}
 
+	public TransformedCode upsertCode(String name, String language, String source, String metadataJson, String createdBy) {
+		Optional<TransformedCode> existing = findByName(name);
+		if (existing.isPresent()) {
+			jdbc.update("UPDATE transformed_code SET language=?, source=?, metadata=?::jsonb, status='READY' WHERE name=?",
+					language, source, metadataJson, name);
+			return findByName(name).orElseThrow();
+		}
+		return insertCode(name, language, source, metadataJson, createdBy);
+	}
+
+	public List<TransformedCode> listAll() {
+		return jdbc.query("SELECT * FROM transformed_code ORDER BY created_at DESC", codeRow);
+	}
+
 	public ExecutionAudit createAudit(UUID codeId, String codeName, String inputJson) {
 		UUID id = UUID.randomUUID();
 		jdbc.update("INSERT INTO execution_audit(id, code_id, code_name, status, input) VALUES (?,?,?,?,?::jsonb)",
