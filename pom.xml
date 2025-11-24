@@ -55,12 +55,6 @@
             <artifactId>commons-compiler</artifactId>
             <version>3.1.12</version>
         </dependency>
-        <!-- GraalJS engine (optional; will be used if present) -->
-        <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js</artifactId>
-            <version>24.1.1</version>
-        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
