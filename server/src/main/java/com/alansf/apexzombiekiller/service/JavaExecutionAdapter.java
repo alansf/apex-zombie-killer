@@ -56,7 +56,7 @@ public class JavaExecutionAdapter {
 			return obj;
 		}
 		@Override public ClassLoader getClassLoader(Location location) {
-			return new SecureClassLoader() {
+			return new ClassLoader(getClass().getClassLoader()) {
 				@Override protected Class<?> findClass(String name) throws ClassNotFoundException {
 					InMemoryClassObject obj = classes.get(name);
 					if (obj == null) throw new ClassNotFoundException(name);
