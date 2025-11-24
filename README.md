@@ -1,112 +1,86 @@
-## Apex Zombie Killer - Heroku AppLink + Spring Boot Offload
+## Apex Zombie Killer
 
-This repo ships a demo that offloads long-running Apex batch workloads to a Heroku-hosted Spring Boot service, surfaced in Salesforce via Heroku AppLink and invoked via External Services or Named Credentials. It also includes a reusable UI utility to convert APEX code to Java or JavaScript (server-side API stubbed; wire your model key to enable LLM-based transformation).
+Demo app to offload/transform Apex to Java/JS, run approved code on Heroku, and expose actions to Salesforce via AppLink in user-plus mode. Includes a simple UI, approval flow, dynamic OpenAPI, and LWC embedding.
 
-### Components
-- `server/`: Spring Boot app exposing:
-  - Five job endpoints mirroring Apex batches
-  - Code transform endpoints: APEX→Java and APEX→JavaScript
-  - Static `openapi.yaml` for External Services and Agentforce tools
-- `web/`: Vite + React front-end with Monaco-like editor UX (lightweight text area) for APEX conversion
-- `heroku/connect-mapping.json`: Starter Heroku Connect mapping
-- `scripts/`: Example Salesforce seed data and helpers
+App/Org
+- Heroku app: `apex-zombie-killer`
+- Base URL: `https://apex-zombie-killer.herokuapp.com`
+- Salesforce org alias: `purple-zombie` (`https://purple-zombie.my.salesforce.com`)
 
----
-
-## Quick Start
-
+### 1) Build and deploy (from repo root)
 ```bash
-cd /Users/alan.scott/Development/demo/apex-zombie-killer
-```
-
-### Salesforce (DevHub / Scratch Org)
-```bash
-sf org login web --set-default-dev-hub --alias DevHub
-sf org create scratch --definition-file config/project-scratch-def.json \
-  --set-default --duration-days 7 --alias apex-perf-demo
-
-# (Optional) Deploy Named Credential metadata if you add it under force-app/
-sf project deploy start --source-dir force-app --target-org apex-perf-demo
-
-# Seed data for baselines (optional)
-sf apex run --file scripts/seed_data.apex --target-org apex-perf-demo
-```
-
-### Heroku (App, Postgres, Connect, Deploy)
-```bash
-heroku login
-heroku apps:info -a apex-zombie-killer
-heroku stack:set heroku-22 -a apex-zombie-killer
+cd /Users/alan.scott/Development/apex-zombie-killer
+mvn -q -DskipTests -f pom.xml clean package
+heroku buildpacks:clear -a apex-zombie-killer
 heroku buildpacks:add heroku/java -a apex-zombie-killer
+git fetch heroku main || true
+git push heroku main || git push heroku main --force
+```
+
+### 2) Add-ons and config (demo-friendly)
+```bash
+# Postgres
 heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer
-heroku plugins:install heroku-connect
-heroku addons:create herokuconnect:demo -a apex-zombie-killer
 
-# Import starter mapping
-heroku connect:import heroku/connect-mapping.json -a apex-zombie-killer
+# AppLink add-on (SSO/trust path)
+heroku addons:create heroku-applink:demo -a apex-zombie-killer
 
-# Build and deploy server
-cd server
-./mvnw -q -DskipTests package || mvn -q -DskipTests package
-heroku git:remote -a apex-zombie-killer
-git add . && git commit -m "server: initial" || true
-git push heroku main
+# Managed Inference (demo; use your real values)
+heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer
+heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer
+heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer
+
+# Optional AppLink API vars for programmatic orchestration (do not commit secrets)
+heroku config:set HEROKU_APPLINK_API_URL="<applink_api_url>" -a apex-zombie-killer
+heroku config:set HEROKU_APPLINK_TOKEN="<applink_token>" -a apex-zombie-killer
 ```
 
-### Heroku AppLink (Salesforce UI)
-- Salesforce Setup → Heroku → Link Heroku App → select `apex-zombie-killer`.
-- Add the AppLink surface to your Salesforce app (utility bar or app launcher).
-- AppLink is for SSO/UX; use Named Credential or External Services for API callouts.
-
-### External Services / Named Credential
-- Serve OpenAPI at: `https://apex-zombie-killer.herokuapp.com/openapi.yaml`
-- Setup → External Services → Add Service → paste URL above → choose Named Credential.
-- Or call via Apex using a Named Credential endpoint `callout:HerokuJobs/...`.
-
-### Web UI (local dev)
+### 3) Salesforce deploy (Named Credential, CSP, Invocable, LWC)
 ```bash
-cd /Users/alan.scott/Development/demo/apex-zombie-killer/web
-npm install
-npm run dev
+sf org login web --instance-url https://purple-zombie.my.salesforce.com --alias purple-zombie --set-default
+sf project deploy start --source-dir force-app --target-org purple-zombie
+sf org assign permset --name ManageHerokuAppLink --target-org purple-zombie
 ```
-The production UI is built and served by Spring Boot when you run:
+- Named Credential endpoint: `https://apex-zombie-killer.herokuapp.com`
+- CSP Trusted Site: `https://apex-zombie-killer.herokuapp.com`
+
+### 4) Publish AppLink (user-plus)
 ```bash
-cd /Users/alan.scott/Development/demo/apex-zombie-killer/web
-npm run build
-cp -R dist/* ../server/src/main/resources/static/
+cd /Users/alan.scott/Development/apex-zombie-killer
+heroku salesforce:publish apispec.yaml \
+  --client-name HerokuAPI \
+  --connection-name purple-zombie \
+  --authorization-connected-app-name "MyAppLinkApp" \
+  --authorization-permission-set-name "ManageHerokuAppLink" \
+  -a apex-zombie-killer
 ```
 
----
+### 5) Link app & embed UI
+- Setup → Heroku → Link App → `apex-zombie-killer`
+- App Builder → add `herokuAppContainer` to a page; optionally set `appUrl` to the base URL
 
-## Endpoints (server)
-- POST `/jobs/product-purchase/run`
-- POST `/jobs/revenue-file-import/run`
-- POST `/jobs/account-plan-reporting/run`
-- POST `/jobs/cpq-quote-oppty-sync/run`
-- POST `/jobs/opportunity-split/run`
-- POST `/transform/apex-to-java`
-- POST `/transform/apex-to-js`
-- GET  `/openapi.yaml`
+### 6) External Services (optional)
+- Setup → External Services → Add Service → `https://apex-zombie-killer.herokuapp.com/openapi.yaml`
+- Named Credential: `HerokuJobs`
 
-All job endpoints accept:
-```json
-{ "batchSize": 1000, "maxConcurrency": 4, "dateRange": { "from": "2024-01-01", "to": "2025-12-31" }, "dryRun": false }
+### 7) Demo flow
+1) In the Heroku UI: paste Apex → Transform → enter Name → Approve & Publish
+2) (Optional) re-run publish step to refresh External Services actions
+3) Invoke:
+```bash
+curl -s https://apex-zombie-killer.herokuapp.com/ext/Demo/run \
+  -H 'Content-Type: application/json' -d '{"payload":{}}'
 ```
+4) In Salesforce: use `HerokuActions.invokeExecuteByName` or Flow action
 
----
+### 8) Schema (no psql required)
+- The app creates tables on startup. If you prefer migrations:
+  - Add Flyway and `db/migration/V1__init.sql` or use Spring `schema.sql` with `spring.sql.init.mode=always`
 
-## Makefile
-Key targets:
-- `make heroku-deploy` – build and push server to Heroku
-- `make ui-build` – build React UI and copy to Spring Boot static
-- `make connect-import` – import Heroku Connect mappings
-
----
-
-## Notes
-- The transform API is stubbed to return the input with light scaffolding. Set `ANTHROPIC_API_KEY` and implement model wiring in `TransformService` to enable real conversions.
-- For production, secure CORS/headers and replace demo-wide open CORS.
- - Default app used in examples: `apex-zombie-killer`. Update commands if you use a different app name.
+### 9) Notes
+- Demo scope: AppLink SSO + CSP; no prod-grade auth/throttling/sandboxing
+- Dynamic OpenAPI at `/openapi-generated.yaml` (for automation)
+- Default app in examples: `apex-zombie-killer`
 
 
 
