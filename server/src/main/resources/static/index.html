@@ -5,18 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Apex Zombie Killer</title>
     <style>
-      body { font-family: Inter, system-ui, Arial; margin: 0; padding: 24px; background: #0b1220; color: #dbeafe; }
-      h1 { margin: 0 0 8px 0; }
-      .card { background: #0f172a; border: 1px solid #1f2937; border-radius: 10px; padding: 16px; }
+      /* Palette: Heroku Purple #430098, Teal #00B3CC, neutrals on white */
+      body { font-family: Inter, system-ui, Arial; margin: 0; padding: 24px; background: #FFFFFF; color: #181818; }
+      h1 { margin: 0 0 8px 0; color: #430098; }
+      .card { background: #FFFFFF; border: 1px solid #D8D8D8; border-radius: 10px; padding: 16px; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       textarea, pre { width: 100%; height: 320px; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-      textarea { background: #0b1220; color: #e2e8f0; border: 1px solid #1f2937; }
-      pre { background: #111827; color: #e5e7eb; border: 1px solid #1f2937; }
-      button, select { height: 36px; border-radius: 8px; border: 1px solid #374151; background: #111827; color: #e5e7eb; padding: 0 10px; cursor: pointer; }
+      textarea { background: #F5F6FA; color: #181818; border: 1px solid #D8D8D8; }
+      pre { background: #F9FAFB; color: #181818; border: 1px solid #D8D8D8; }
+      button, select { height: 36px; border-radius: 8px; border: 1px solid #D8D8D8; background: #FFFFFF; color: #181818; padding: 0 10px; cursor: pointer; }
+      #btnTransform, #btnApprove { background: #430098; border-color: #430098; color: #FFFFFF; }
+      #btnTransform:hover, #btnApprove:hover { background: #6F359C; border-color: #6F359C; }
+      .job { border-color: #00B3CC; color: #00B3CC; background: #FFFFFF; }
+      .job:hover { background: #E6F8FB; }
       .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .section { margin-top: 16px; }
       .muted { opacity: .8; }
-      .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #1f2937; border: 1px solid #374151; font-size: 12px; }
+      .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #E6F8FB; border: 1px solid #00B3CC; color: #004B55; font-size: 12px; }
+      #jobOut { border-left: 4px solid #00B3CC; }
     </style>
   </head>
   <body>
