@@ -1,14 +1,9 @@
+# macOS
+.DS_Store
+
+# Maven/Java
 target/
-.idea/
-.vscode/
-logs/
-*.log
-server/.DS_Store
-web/node_modules/
-web/dist/
-web/.DS_Store
-**/.DS_Store
+server/target/
 
-
-
-
+# Node
+node_modules/
