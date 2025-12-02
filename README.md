@@ -4,7 +4,7 @@ Demo app to offload/transform Apex to Java/JS, run approved code on Heroku, and 
 
 App/Org
 - Heroku app: `apex-zombie-killer`
-- Base URL: `https://apex-zombie-killer.herokuapp.com`
+- Base URL (live): `https://apex-zombie-killer-6f48e437a14e.herokuapp.com`
 - Salesforce org alias: `purple-zombie` (`https://purple-zombie.my.salesforce.com`)
 
 ### 1) Build and deploy (from repo root)
@@ -41,8 +41,8 @@ sf org login web --instance-url https://purple-zombie.my.salesforce.com --alias 
 sf project deploy start --source-dir force-app --target-org purple-zombie
 sf org assign permset --name ManageHerokuAppLink --target-org purple-zombie
 ```
-- Named Credential endpoint: `https://apex-zombie-killer.herokuapp.com`
-- CSP Trusted Site: `https://apex-zombie-killer.herokuapp.com`
+- Named Credential endpoint: `https://apex-zombie-killer-6f48e437a14e.herokuapp.com`
+- CSP Trusted Site (frame-src enabled): `https://apex-zombie-killer-6f48e437a14e.herokuapp.com`
 
 ### 4) Publish AppLink (user-plus)
 ```bash
@@ -57,30 +57,121 @@ heroku salesforce:publish apispec.yaml \
 
 ### 5) Link app & embed UI
 - Setup → Heroku → Link App → `apex-zombie-killer`
-- App Builder → add `herokuAppContainer` to a page; optionally set `appUrl` to the base URL
+- App Builder → add `herokuAppContainer` to an App Page (full‑width) or Record Page; set `appUrl` to the live Base URL.
+- LWC styling updated for Heroku colors (purple primary, teal accent) and full‑bleed iframe.
 
 ### 6) External Services (optional)
-- Setup → External Services → Add Service → `https://apex-zombie-killer.herokuapp.com/openapi.yaml`
+- Setup → External Services → Add Service → `https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi.yaml`
 - Named Credential: `HerokuJobs`
 
-### 7) Demo flow
-1) In the Heroku UI: paste Apex → Transform → enter Name → Approve & Publish
-2) (Optional) re-run publish step to refresh External Services actions
-3) Invoke:
+### 7) Demo flow (end-to-end)
+1) Open Salesforce → “Heroku Transformer” page (embedded LWC).
+2) Paste Apex (see five snippets below) → select Java or JS → Transform → enter Name → Approve & Publish (updates spec without redeploy).
+3) Record‑Triggered Flow on Opportunity (create/update) calls the five job actions:
+   - `POST /jobs/product-purchase/run`
+   - `POST /jobs/revenue-import/run`
+   - `POST /jobs/account-plan-reporting/run`
+   - `POST /jobs/cpq-quote-oppty-sync/run`
+   - `POST /jobs/opportunity-split/run`
+   Optional: add a Decision node (e.g., Stage = Closed Won).
+4) Create or update an Opportunity → watch Heroku logs and Flow action responses.
+5) Invoke directly (optional):
 ```bash
-curl -s https://apex-zombie-killer.herokuapp.com/ext/Demo/run \
+HOST=$(heroku apps:info -a apex-zombie-killer | sed -n 's/^Web URL: //p' | tr -d '\r')
+curl -s "${HOST}ext/Demo/run" \
   -H 'Content-Type: application/json' -d '{"payload":{}}'
 ```
-4) In Salesforce: use `HerokuActions.invokeExecuteByName` or Flow action
+6) In Salesforce: use `HerokuActions.invokeExecuteByName('Demo', '{"payload":{}}')` or an External Service action.
 
 ### 8) Schema (no psql required)
 - The app creates tables on startup. If you prefer migrations:
   - Add Flyway and `db/migration/V1__init.sql` or use Spring `schema.sql` with `spring.sql.init.mode=always`
 
-### 9) Notes
-- Demo scope: AppLink SSO + CSP; no prod-grade auth/throttling/sandboxing
-- Dynamic OpenAPI at `/openapi-generated.yaml` (for automation)
-- Default app in examples: `apex-zombie-killer`
+### 9) Paste‑ready Apex snippets
+
+These avoid custom fields and use standard objects; ideal for quick transforms.
+
+1) ProductPurchaseProcessBatchABM
+```apex
+public with sharing class ProductPurchaseProcessBatchABM implements Database.Batchable<SObject>{
+  public Database.QueryLocator start(Database.BatchableContext bc){
+    return Database.getQueryLocator('SELECT Id, Quantity, TotalPrice FROM OpportunityLineItem WHERE Opportunity.IsClosed = false');
+  }
+  public void execute(Database.BatchableContext bc, List<OpportunityLineItem> scope){
+    Decimal totalQty = 0; Decimal totalRevenue = 0;
+    for (OpportunityLineItem oli : scope){
+      totalQty += (oli.Quantity == null ? 0 : oli.Quantity);
+      totalRevenue += (oli.TotalPrice == null ? 0 : oli.TotalPrice);
+    }
+    System.debug('Processed OLI batch — qty=' + totalQty + ', revenue=' + totalRevenue);
+  }
+  public void finish(Database.BatchableContext bc){ System.debug('ProductPurchaseProcessBatchABM finished'); }
+}
+```
+
+2) RevenueFileImportJob (mock file parse)
+```apex
+public with sharing class RevenueFileImportJob implements Queueable {
+  public void execute(QueueableContext qc){
+    List<String> lines = new List<String>{'Opp,Amount','A-001,1000','A-002,2500'};
+    Decimal sum = 0;
+    for (Integer i = 1; i < lines.size(); i++){
+      List<String> cols = lines[i].split(',');
+      sum += Decimal.valueOf(cols[1]);
+    }
+    System.debug('Imported revenue total = ' + sum);
+  }
+}
+```
+
+3) AccountPlanReportingDataBatch
+```apex
+public with sharing class AccountPlanReportingDataBatch implements Database.Batchable<SObject>{
+  public Database.QueryLocator start(Database.BatchableContext bc){
+    return Database.getQueryLocator('SELECT Id, Name, Type FROM Account WHERE IsDeleted = false');
+  }
+  public void execute(Database.BatchableContext bc, List<Account> scope){
+    Integer cnt = 0; for (Account a : scope){ cnt++; }
+    System.debug('Account plan rollup — batchCount=' + cnt);
+  }
+  public void finish(Database.BatchableContext bc){ System.debug('AccountPlanReportingDataBatch finished'); }
+}
+```
+
+4) CPQ_QuoteOpprtunitySyncBatch
+```apex
+public with sharing class CPQ_QuoteOpprtunitySyncBatch implements Database.Batchable<SObject>{
+  public Database.QueryLocator start(Database.BatchableContext bc){
+    return Database.getQueryLocator('SELECT Id, OpportunityId, GrandTotal FROM Quote WHERE Status = \\'Approved\\'');
+  }
+  public void execute(Database.BatchableContext bc, List<Quote> scope){
+    Decimal approvedTotal = 0;
+    for (Quote q : scope){ approvedTotal += (q.GrandTotal == null ? 0 : q.GrandTotal); }
+    System.debug('Approved quotes total = ' + approvedTotal);
+  }
+  public void finish(Database.BatchableContext bc){ System.debug('CPQ_QuoteOpprtunitySyncBatch finished'); }
+}
+```
+
+5) OpportunityAndSplitBatch
+```apex
+public with sharing class OpportunityAndSplitBatch implements Database.Batchable<SObject>{
+  public Database.QueryLocator start(Database.BatchableContext bc){
+    return Database.getQueryLocator('SELECT Id, Amount, StageName FROM Opportunity WHERE IsClosed = false');
+  }
+  public void execute(Database.BatchableContext bc, List<Opportunity> scope){
+    for (Opportunity o : scope){
+      Decimal totalPct = 100; // placeholder
+      System.debug('Opportunity ' + o.Id + ' split check %=' + totalPct);
+    }
+  }
+  public void finish(Database.BatchableContext bc){ System.debug('OpportunityAndSplitBatch finished'); }
+}
+```
+
+### 10) Notes
+- For the embedded LWC demo we run without the AppLink Service Mesh so the iframe renders anonymously. To enforce SSO later, switch Procfile back to mesh and embed using an AppLink‑authenticated URL.
+- Dynamic OpenAPI is regenerated by Approve & Publish; no app redeploy required.
 
 
 
