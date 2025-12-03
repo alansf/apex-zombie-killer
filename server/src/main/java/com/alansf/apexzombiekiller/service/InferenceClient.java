@@ -97,14 +97,35 @@ public class InferenceClient {
 				configured.replace("/v1/messages", "/v1/chat/completions")
 			)
 			: List.of(
+				// Prefer chat completions as per current docs
+				trimTrailingSlash(configured) + "/v1/chat/completions",
 				trimTrailingSlash(configured) + "/v1/messages",
-				trimTrailingSlash(configured) + "/v1/infer",
-				trimTrailingSlash(configured) + "/v1/chat/completions"
+				trimTrailingSlash(configured) + "/v1/infer"
 			);
 
 		for (String url : candidates) {
 			try {
-				ResponseEntity<String> res = http.postForEntity(url, req, String.class);
+				// Build request body per target schema to avoid 400s on unknown args
+				Map<String, Object> payload = new HashMap<>();
+				payload.put("model", model().get());
+				if (url.contains("/v1/chat/completions")) {
+					// Strict chat schema: messages only
+					payload.put("messages", List.of(
+						Map.of("role", "system", "content", system),
+						Map.of("role", "user", "content", user)
+					));
+				} else if (url.contains("/v1/infer")) {
+					// Simple infer schema: input only
+					payload.put("input", system + "\n\n" + user);
+				} else {
+					// Generic messages endpoint
+					payload.put("messages", List.of(
+						Map.of("role", "user", "content", system + "\n\n" + user)
+					));
+				}
+
+				HttpEntity<Map<String, Object>> shapedReq = new HttpEntity<>(payload, headers);
+				ResponseEntity<String> res = http.postForEntity(url, shapedReq, String.class);
 				if (!res.getStatusCode().is2xxSuccessful() || res.getBody() == null) {
 					log.warn("Inference call failed: url={}, status={}, body={}", url, res.getStatusCode(), res.getBody());
 					continue;
