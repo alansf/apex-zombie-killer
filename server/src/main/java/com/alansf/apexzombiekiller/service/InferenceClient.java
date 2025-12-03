@@ -11,8 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -59,43 +61,76 @@ public class InferenceClient {
 		if (endpoint().isEmpty() || model().isEmpty()) {
 			return Optional.empty();
 		}
-		try {
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
-			bearerToken().ifPresent(tok -> headers.set("Authorization", "Bearer " + tok));
+		// Build headers once
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		bearerToken().ifPresent(tok -> headers.set("Authorization", "Bearer " + tok));
 
-			Map<String, Object> body = new HashMap<>();
-			body.put("model", model().get());
+		// Construct a flexible body that can satisfy common schemas
+		Map<String, Object> body = new HashMap<>();
+		body.put("model", model().get());
 
-			String system = "You convert Salesforce Apex to efficient, bulk-safe " +
-				(target.equals("java") ? "Java for Spring Boot with Heroku Postgres + Heroku Connect." : "JavaScript for Node/Heroku.") +
-				" Replace SOQL/DML-in-loops, use batching, indexed filters, and selective fields. Output only the code.";
-			String user = "Options: useHerokuConnect=" + useHerokuConnect + ", generateTests=" + generateTests + "\nApex code:\n" + apexCode;
-			Map<String, Object> messages = Map.of(
-				"system", system,
-				"user", user
+		String system = "You convert Salesforce Apex to efficient, bulk-safe " +
+			(target.equals("java") ? "Java for Spring Boot with Heroku Postgres + Heroku Connect." : "JavaScript for Node/Heroku.") +
+			" Replace SOQL/DML-in-loops, use batching, indexed filters, and selective fields. Output only the code.";
+		String user = "Options: useHerokuConnect=" + useHerokuConnect + ", generateTests=" + generateTests + "\nApex code:\n" + apexCode;
+		// OpenAI/Anthropic-style messages (array)
+		body.put("messages", List.of(
+			Map.of("role", "system", "content", system),
+			Map.of("role", "user", "content", user)
+		));
+		// Generic single-field prompt for simpler /v1/infer style APIs
+		body.put("input", system + "\n\n" + user);
+
+		HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
+
+		// Prepare candidate URLs:
+		// - If the configured endpoint already has a versioned path, try it first then a couple of alternates
+		// - If it's just a host/base, append known paths
+		String configured = endpoint().get().trim();
+		boolean hasVersionPath = configured.matches(".*/v\\d+/.*");
+		List<String> candidates = hasVersionPath
+			? List.of(
+				configured,
+				configured.replace("/v1/infer", "/v1/messages"),
+				configured.replace("/v1/messages", "/v1/infer"),
+				configured.replace("/v1/messages", "/v1/chat/completions")
+			)
+			: List.of(
+				trimTrailingSlash(configured) + "/v1/messages",
+				trimTrailingSlash(configured) + "/v1/infer",
+				trimTrailingSlash(configured) + "/v1/chat/completions"
 			);
-			body.put("messages", messages);
 
-			HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-			ResponseEntity<String> res = http.postForEntity(endpoint().get(), req, String.class);
-			if (!res.getStatusCode().is2xxSuccessful() || res.getBody() == null) {
-				log.warn("Inference call failed: status={}, body={}", res.getStatusCode(), res.getBody());
-				return Optional.empty();
+		for (String url : candidates) {
+			try {
+				ResponseEntity<String> res = http.postForEntity(url, req, String.class);
+				if (!res.getStatusCode().is2xxSuccessful() || res.getBody() == null) {
+					log.warn("Inference call failed: url={}, status={}, body={}", url, res.getStatusCode(), res.getBody());
+					continue;
+				}
+				JsonNode root = mapper.readTree(res.getBody());
+				if (root.has("output")) {
+					return Optional.ofNullable(root.get("output").asText());
+				}
+				if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
+					return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
+				}
+				// Last resort: return entire body
+				return Optional.of(res.getBody());
+			} catch (HttpClientErrorException.NotFound nf) {
+				log.warn("Inference path 404, trying next candidate: {}", url);
+			} catch (Exception ex) {
+				log.error("Inference unexpected error for url={}", url, ex);
+				// Move on to next candidate
 			}
-			JsonNode root = mapper.readTree(res.getBody());
-			// Flexible extraction; adapt to actual Managed Inference response schema when available
-			if (root.has("output")) {
-				return Optional.ofNullable(root.get("output").asText());
-			}
-			if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
-				return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
-			}
-			return Optional.of(res.getBody());
-		} catch (Exception ex) {
-			log.error("Inference unexpected error", ex);
-			return Optional.empty();
 		}
+		return Optional.empty();
+	}
+
+	private static String trimTrailingSlash(String s) {
+		if (s == null || s.isEmpty()) return s;
+		return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
 	}
 }
 
