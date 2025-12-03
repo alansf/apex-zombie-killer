@@ -23,15 +23,27 @@ public class InferenceClient {
 	private final ObjectMapper mapper = new ObjectMapper();
 
 	private Optional<String> endpoint() {
-		String url = System.getenv("INFERENCE_ENDPOINT");
+		// Prefer demo env naming (INFERENCE_URL), fallback to legacy INFERENCE_ENDPOINT
+		String url = System.getenv("INFERENCE_URL");
+		if (url == null || url.isBlank()) {
+			url = System.getenv("INFERENCE_ENDPOINT");
+		}
 		return Optional.ofNullable(url).filter(s -> !s.isBlank());
 	}
 	private Optional<String> model() {
-		String m = System.getenv("INFERENCE_MODEL");
+		// Prefer demo env naming (INFERENCE_MODEL_ID), fallback to legacy INFERENCE_MODEL
+		String m = System.getenv("INFERENCE_MODEL_ID");
+		if (m == null || m.isBlank()) {
+			m = System.getenv("INFERENCE_MODEL");
+		}
 		return Optional.ofNullable(m).filter(s -> !s.isBlank());
 	}
 	private Optional<String> bearerToken() {
-		String t = System.getenv("INFERENCE_TOKEN");
+		// Prefer demo env naming (INFERENCE_KEY), fallback to legacy INFERENCE_TOKEN
+		String t = System.getenv("INFERENCE_KEY");
+		if (t == null || t.isBlank()) {
+			t = System.getenv("INFERENCE_TOKEN");
+		}
 		return Optional.ofNullable(t).filter(s -> !s.isBlank());
 	}
 

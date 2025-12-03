@@ -21,8 +21,8 @@ management:
       exposure:
         include: health,info
 inference:
-  endpoint: ${INFERENCE_ENDPOINT:}
-  model: ${INFERENCE_MODEL:}
+  endpoint: ${INFERENCE_URL:}
+  model: ${INFERENCE_MODEL_ID:}
 
 
 
