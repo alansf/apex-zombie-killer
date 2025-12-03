@@ -7,12 +7,23 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class JavaExecutionAdapter {
 	private static final Map<String, Class<?>> cache = new ConcurrentHashMap<>();
 
 	public void execute(String className, String source) throws Exception {
-		Class<?> clazz = cache.computeIfAbsent(className, n -> compile(n, source));
+		// Strip any package declaration to simplify in-memory compilation and loading.
+		String sanitized = stripPackage(source);
+		// Auto-detect the primary class name (prefer public), fallback to provided name.
+		String effectiveName = detectClassName(sanitized);
+		if (effectiveName == null || effectiveName.isBlank()) {
+			effectiveName = className;
+		}
+		final String finalName = effectiveName;
+		final String finalSource = sanitized;
+		Class<?> clazz = cache.computeIfAbsent(finalName, n -> compile(finalName, finalSource));
 		Object instance = clazz.getDeclaredConstructor().newInstance();
 		clazz.getMethod("run").invoke(instance);
 	}
@@ -36,6 +47,22 @@ public class JavaExecutionAdapter {
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static final Pattern PUBLIC_CLASS = Pattern.compile("(?m)^\\s*public\\s+class\\s+([A-Za-z_][A-Za-z0-9_]*)\\b");
+	private static final Pattern ANY_CLASS = Pattern.compile("(?m)^\\s*class\\s+([A-Za-z_][A-Za-z0-9_]*)\\b");
+
+	private static String detectClassName(String src) {
+		Matcher m = PUBLIC_CLASS.matcher(src);
+		if (m.find()) return m.group(1);
+		m = ANY_CLASS.matcher(src);
+		if (m.find()) return m.group(1);
+		return null;
+	}
+
+	private static String stripPackage(String src) {
+		// Remove any package declaration lines to keep classes package-less.
+		return src.replaceAll("(?m)^\\s*package\\s+[^;]+;\\s*", "");
 	}
 
 	static class JavaSourceFromString extends SimpleJavaFileObject {
