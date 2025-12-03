@@ -1,6 +1,21 @@
 <template>
-	<div class="container">
-		<iframe src={src} class="frame" title="Heroku App" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+	<div class="shell slds-box slds-p-around_small">
+		<div class="header slds-p-around_x-small slds-m-bottom_x-small">
+			<div class="title">Heroku Transformer</div>
+			<a class="heroku-action-button slds-button" href={src} target="_blank" rel="noopener">
+				Open in New Tab
+			</a>
+		</div>
+
+		<div class="container">
+			<iframe
+				src={src}
+				class="frame"
+				title="Heroku App"
+				sandbox="allow-scripts allow-forms allow-same-origin"
+				scrolling="yes">
+			</iframe>
+		</div>
 	</div>
 </template>
 
