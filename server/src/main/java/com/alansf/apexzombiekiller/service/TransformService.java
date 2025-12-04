@@ -38,7 +38,7 @@ public class TransformService {
 					"        assertDoesNotThrow(() -> new ConvertedFromApex().run());\n" +
 					"    }\n" +
 					"}\n";
-			res.notes = "Fallback stub. Configure INFERENCE_ENDPOINT and INFERENCE_MODEL for Managed Inference.";
+			res.notes = "Fallback stub. Configure INFERENCE_URL and INFERENCE_MODEL_ID for Managed Inference.";
 		});
 		return res;
 	}
