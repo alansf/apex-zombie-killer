@@ -24,8 +24,26 @@ public class JavaExecutionAdapter {
 		final String finalName = effectiveName;
 		final String finalSource = sanitized;
 		Class<?> clazz = cache.computeIfAbsent(finalName, n -> compile(finalName, finalSource));
-		Object instance = clazz.getDeclaredConstructor().newInstance();
-		clazz.getMethod("run").invoke(instance);
+		// Try common entrypoints: run(), execute(), or static main(String[])
+		try {
+			Object instance = clazz.getDeclaredConstructor().newInstance();
+			try {
+				clazz.getMethod("run").invoke(instance);
+				return;
+			} catch (NoSuchMethodException ignored) {}
+			try {
+				clazz.getMethod("execute").invoke(instance);
+				return;
+			} catch (NoSuchMethodException ignored) {}
+		} catch (NoSuchMethodException ignored) {
+			// no default ctor: fall through to main
+		}
+		// As a last resort, try static main
+		try {
+			clazz.getMethod("main", String[].class).invoke(null, (Object) new String[0]);
+		} catch (NoSuchMethodException e) {
+			throw new RuntimeException("No suitable entrypoint found. Expected one of: run(), execute(), or static main(String[]).");
+		}
 	}
 
 	private Class<?> compile(String className, String source) {
