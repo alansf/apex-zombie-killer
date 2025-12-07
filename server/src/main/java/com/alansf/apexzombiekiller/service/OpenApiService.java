@@ -10,7 +10,11 @@ import java.util.stream.Collectors;
 @Service
 public class OpenApiService {
 	private final CodeRepository repo;
-	public OpenApiService(CodeRepository repo) { this.repo = repo; }
+	private final com.alansf.apexzombiekiller.repo.BindingRepository bindings;
+	public OpenApiService(CodeRepository repo, com.alansf.apexzombiekiller.repo.BindingRepository bindings) {
+		this.repo = repo;
+		this.bindings = bindings;
+	}
 
 	public String generateYaml(String serverUrl) {
 		List<TransformedCode> codes = repo.listAll();
@@ -42,29 +46,7 @@ public class OpenApiService {
 			+ "servers:\n"
 			+ "  - url: " + serverUrl + "\n"
 			+ "paths:\n"
-			+ "  /code/execute-by-name/{name}:\n"
-			+ "    post:\n"
-			+ "      operationId: executeByName\n"
-			+ "      parameters:\n"
-			+ "        - in: path\n"
-			+ "          name: name\n"
-			+ "          required: true\n"
-			+ "          schema: { type: string }\n"
-			+ "      requestBody:\n"
-			+ "        required: false\n"
-			+ "        content:\n"
-			+ "          application/json:\n"
-			+ "            schema:\n"
-			+ "              type: object\n"
-			+ "              properties:\n"
-			+ "                payload: { type: object }\n"
-			+ "      responses:\n"
-			+ "        \"200\":\n"
-			+ "          description: OK\n"
-			+ "          content:\n"
-			+ "            application/json:\n"
-			+ "              schema:\n"
-			+ "                $ref: '#/components/schemas/ExecutionAudit'\n"
+			+ dynamicWebPaths()
 			+ aliasPaths
 			+ "components:\n"
 			+ "  schemas:\n"
@@ -79,6 +61,43 @@ public class OpenApiService {
 			+ "        status: { type: string }\n"
 			+ "        error: { type: string }\n"
 			+ "        inputJson: { type: string }\n";
+	}
+
+	private String dynamicWebPaths() {
+		var list = bindings.listWeb();
+		StringBuilder sb = new StringBuilder();
+		for (var b : list) {
+			// Default path: /exec/{name}
+			String path = "/exec/" + b.name;
+			try {
+				var cfg = b.configJson == null ? "{}" : b.configJson;
+				if (cfg.contains("\"path\"")) {
+					int i = cfg.indexOf("\"path\"");
+					int q = cfg.indexOf('"', i + 6);
+					int q2 = cfg.indexOf('"', q + 1);
+					if (q > 0 && q2 > q) path = cfg.substring(q + 1, q2);
+				}
+			} catch (Exception ignored) {}
+			sb.append("  ").append(path).append(":\n")
+					.append("    post:\n")
+					.append("      operationId: exec_").append(b.name).append("\n")
+					.append("      requestBody:\n")
+					.append("        required: false\n")
+					.append("        content:\n")
+					.append("          application/json:\n")
+					.append("            schema:\n")
+					.append("              type: object\n")
+					.append("              properties:\n")
+					.append("                payload: { type: object }\n")
+					.append("      responses:\n")
+					.append("        \"200\":\n")
+					.append("          description: OK\n")
+					.append("          content:\n")
+					.append("            application/json:\n")
+					.append("              schema:\n")
+					.append("                $ref: '#/components/schemas/ExecutionAudit'\n");
+		}
+		return sb.toString();
 	}
 }
 

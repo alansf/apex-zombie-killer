@@ -89,8 +89,20 @@ public class CodeController {
 		r.id = code.id;
 		r.name = code.name;
 		r.status = code.status;
+		// Default binding + publish job
+		try {
+			// Upsert default web binding and enqueue compile+publish jobs
+			var app = org.springframework.web.context.ContextLoader.getCurrentWebApplicationContext();
+			var bindingRepo = app.getBean(com.alansf.apexzombiekiller.repo.BindingRepository.class);
+			var jobRepo = app.getBean(com.alansf.apexzombiekiller.repo.JobQueueRepository.class);
+			bindingRepo.upsertWeb(code.name, "/exec/" + code.name);
+			jobRepo.enqueue("compile", code.name, null);
+			jobRepo.enqueue("publish", code.name, null);
+		} catch (Exception ignore) {
+			// Non-fatal in demo
+		}
 		String jobId = publish.queueRepublish();
-		r.notes = "Approved and ready. Use /code/execute-by-name/" + code.name + " or /ext/" + code.name + "/run. Publish job=" + jobId;
+		r.notes = "Approved and ready. Use /exec/" + code.name + " or /ext/" + code.name + "/run. Publish job=" + jobId;
 		return r;
 	}
 

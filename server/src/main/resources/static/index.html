@@ -1,3 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heroku Transformer</title>
+  <style>
+    body { font-family: Inter, system-ui, Arial; margin: 0; padding: 16px; background: #FFFFFF; color: #181818; }
+    h1 { margin: 0 0 8px 0; color: #430098; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+    textarea { width: 100%; min-height: 320px; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #F3F3F3; color: #181818; border: 1px solid #D8D8D8; }
+    .card { background: #FFFFFF; border: 1px solid #D8D8D8; border-radius: 10px; padding: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button, input[type="text"] { height: 36px; border-radius: 8px; border: 1px solid #D8D8D8; background: #F3F3F3; color: #181818; padding: 0 10px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tab { padding: 4px 8px; border: 1px solid #D8D8D8; border-radius: 6px; cursor: pointer; background: #F3F3F3; }
+    .tab.active { background: #430098; border-color: #430098; color: #fff; }
+    .codepane { border: 1px solid #D8D8D8; border-radius: 8px; padding: 8px; background: #F9F9F9; max-height: 60vh; overflow-y: auto; resize: vertical; }
+    pre { margin: 0; white-space: pre; }
+    .primary { background: #430098; border-color: #430098; color: #fff; }
+    .primary:hover { background: #6F359C; border-color: #6F359C; }
+    .toolbar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Apex Code Transformation Assistant</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="row">
+        <select id="target">
+          <option value="java">Java (Spring Boot)</option>
+          <option value="js">JavaScript (Node)</option>
+        </select>
+        <button id="btnTransform" class="primary">Transform</button>
+        <label><input type="checkbox" id="compact"> Compact prompt</label>
+      </div>
+      <textarea id="apex" placeholder="Paste APEX here..."></textarea>
+      <div class="row">
+        <input id="name" type="text" placeholder="Name for approval (e.g., Demo)" style="flex:1">
+        <button id="btnApprove" class="primary">Approve & Publish</button>
+      </div>
+      <div id="notes" style="margin-top:8px; opacity:.8;"></div>
+    </div>
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" data-tab="java">Java</div>
+        <div class="tab" data-tab="js">JS</div>
+        <div class="tab" data-tab="test">Test</div>
+        <div class="tab" data-tab="notes">Notes</div>
+      </div>
+      <div class="toolbar">
+        <button id="btnCopy">Copy</button>
+        <button id="btnDownload">Download</button>
+      </div>
+      <div class="codepane"><pre id="out"></pre></div>
+    </div>
+  </div>
+  <script>
+    const apex = document.getElementById('apex');
+    const target = document.getElementById('target');
+    const compact = document.getElementById('compact');
+    const out = document.getElementById('out');
+    const notes = document.getElementById('notes');
+    const name = document.getElementById('name');
+    let buffers = { java: '', js: '', test: '', notes: '' };
+    let activeTab = 'java';
+
+    function setTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      out.textContent = buffers[tab] || '';
+    }
+    document.querySelectorAll('.tab').forEach(t => t.onclick = () => setTab(t.dataset.tab));
+    document.getElementById('btnCopy').onclick = async () => {
+      await navigator.clipboard.writeText(out.textContent || '');
+    };
+    document.getElementById('btnDownload').onclick = () => {
+      const blob = new Blob([out.textContent || ''], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (activeTab === 'java' ? 'ConvertedFromApex.java' : activeTab === 'js' ? 'convertedFromApex.js' : activeTab + '.txt');
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    async function post(path, body) {
+      const res = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+      return await res.json();
+    }
+
+    document.getElementById('btnTransform').onclick = async () => {
+      buffers = { java:'', js:'', test:'', notes:'' };
+      out.textContent = '';
+      notes.textContent = 'Transforming...';
+      const body = { apexCode: apex.value, options: { useHerokuConnect:false, generateTests:false, compact: !!compact.checked } };
+      const tgt = target.value;
+      const data = await post('/transform/' + (tgt === 'java' ? 'apex-to-java' : 'apex-to-js'), body);
+      if (data.javaCode) buffers.java = data.javaCode;
+      if (data.jsCode) buffers.js = data.jsCode;
+      if (data.testCode) buffers.test = data.testCode;
+      buffers.notes = data.notes || '';
+      setTab(tgt);
+      notes.textContent = data.notes || '';
+    };
+
+    document.getElementById('btnApprove').onclick = async () => {
+      const nm = name.value || 'Demo';
+      const tgt = target.value;
+      const body = { name: nm, language: tgt, source: buffers[tgt] || '', metadata: {} };
+      const r = await post('/code/approve', body);
+      notes.textContent = r.notes || 'Approved.';
+    };
+  </script>
+</body>
+</html>
+
 <!doctype html>
 <html lang="en">
   <head>

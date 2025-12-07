@@ -1,3 +1,87 @@
+# Apex Zombie Killer – Single‑App Multi‑Modal Runtime (Postgres‑backed)
+
+Demo‑ready Spring Boot app that:
+- Transforms Apex → Java/JS using Heroku Managed Inference
+- Approves code, binds it to runtime endpoints, and publishes a dynamic OpenAPI for Salesforce External Services
+- Executes code via web, queue, or simulated Postgres trigger paths
+
+## Quick Start (Local)
+```bash
+# Java 21+ and Maven required
+mvn -f server/pom.xml -DskipTests package
+java -jar server/target/app.jar
+```
+
+Open `http://localhost:8080/` and try a transform + Approve.
+
+## Heroku Deploy
+Assumes you already have an app (e.g., apex-zombie-killer) and Heroku Postgres attached.
+
+```bash
+APP=apex-zombie-killer
+
+# Build and deploy
+git add .
+git commit -m "runtime: postgres bindings/queue; inference streaming; UI improvements"
+git push heroku main
+
+# Required config
+heroku config:set \
+  INFERENCE_URL="https://us.inference.heroku.com" \
+  INFERENCE_MODEL_ID="claude-4-5-sonnet" \
+  INFERENCE_KEY="REDACTED" \
+  -a $APP
+
+# Optional: set APP_BASE_URL if you need stable OpenAPI server url
+# heroku config:set APP_BASE_URL="$(heroku apps:info -a $APP | sed -n 's/^Web URL: //p' | tr -d '\r')" -a $APP
+
+# Verify logs and health
+heroku logs --tail -a $APP
+```
+
+Procfile (already present):
+```
+web: java $JAVA_OPTS -Dserver.port=$PORT -jar server/target/app.jar
+```
+
+Spring Boot applies `/server/src/main/resources/schema.sql` on startup:
+- `transformed_code`, `execution_audit` (existing)
+- `code_binding`, `job_queue`, `compiled_artifact` (new for runtime)
+
+## Managed Inference (Streaming)
+- Endpoint: `INFERENCE_URL=https://us.inference.heroku.com`
+- Route: `/v1/chat/completions` with `stream=true`
+- Auth: `Authorization: Bearer $INFERENCE_KEY`
+- Model: `INFERENCE_MODEL_ID=claude-4-5-sonnet`
+The app uses `WebClient` to stream tokens and aggregates the result. Retries once on transient errors.
+
+## Runtime Automation (Approve → Publish)
+1) Approve writes to `transformed_code`, upserts a default web binding `/exec/{name}`, and enqueues `compile` then `publish` jobs into `job_queue` (and emits a NOTIFY tick).
+2) `QueueWorker` compiles (and optionally caches) and calls `PublishService`.
+3) `OpenApiService` generates dynamic OpenAPI from `code_binding` (web) plus aliases and logs the ready‑to‑publish spec. You can wire this to AppLink publish if desired.
+
+## Calling the Code
+- Web: `POST /exec/{name}` body `{ "payload": {} }`
+- Queue: `POST /runtime/job/enqueue { "name":"MyJob", "payload":{} }` (worker picks it up)
+- Trigger (simulated): `NOTIFY mia_events, '{"job_type":"execute","target_name":"MyJob","payload":{}}'`
+
+## Salesforce Integration
+1) Named Credential → your Heroku app base URL
+2) External Services → import from `/runtime/openapi.yaml`
+3) Flow → add actions for `/exec/{name}`
+
+## Troubleshooting
+- 408 from Inference: streaming mitigates; ensure `INFERENCE_*` vars are set and model is valid.
+- DB schema: check startup logs for schema.sql application.
+- OpenAPI: hit `/runtime/openapi.yaml` to inspect generated spec.
+
+## Paths
+- UI: `server/src/main/resources/static/index.html`
+- Inference client: `server/src/main/java/com/alansf/apexzombiekiller/service/InferenceClient.java`
+- Approve/Execute: `server/src/main/java/com/alansf/apexzombiekiller/controller/*`
+- Workers: `server/src/main/java/com/alansf/apexzombiekiller/worker/*`
+- OpenAPI: `server/src/main/java/com/alansf/apexzombiekiller/service/OpenApiService.java`
+
 ## Apex Zombie Killer
 
 Demo app to offload/transform Apex to Java/JS, run approved code on Heroku, and expose actions to Salesforce via AppLink in user-plus mode. Includes a simple UI, approval flow, dynamic OpenAPI, and LWC embedding.

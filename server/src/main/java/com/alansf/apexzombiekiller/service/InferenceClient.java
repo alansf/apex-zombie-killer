@@ -9,9 +9,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.util.retry.Retry;
 
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +22,7 @@ import java.util.Optional;
 @Component
 public class InferenceClient {
 	private static final Logger log = LoggerFactory.getLogger(InferenceClient.class);
-	private final RestTemplate http = new RestTemplate();
+	private final WebClient http = WebClient.builder().build();
 	private final ObjectMapper mapper = new ObjectMapper();
 
 	private Optional<String> endpoint() {
@@ -76,8 +77,6 @@ public class InferenceClient {
 		// Generic single-field prompt for simpler /v1/infer style APIs
 		body.put("input", system + "\n\n" + user);
 
-		HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-
 		// Prepare candidate URLs:
 		// - If the configured endpoint already has a versioned path, try it first then a couple of alternates
 		// - If it's just a host/base, append known paths
@@ -108,6 +107,7 @@ public class InferenceClient {
 						Map.of("role", "system", "content", system),
 						Map.of("role", "user", "content", user)
 					));
+					payload.put("stream", true);
 				} else if (url.contains("/v1/infer")) {
 					// Simple infer schema: input only
 					payload.put("input", system + "\n\n" + user);
@@ -118,21 +118,51 @@ public class InferenceClient {
 					));
 				}
 
-				HttpEntity<Map<String, Object>> shapedReq = new HttpEntity<>(payload, headers);
-				ResponseEntity<String> res = http.postForEntity(url, shapedReq, String.class);
-				if (!res.getStatusCode().is2xxSuccessful() || res.getBody() == null) {
-					log.warn("Inference call failed: url={}, status={}, body={}", url, res.getStatusCode(), res.getBody());
-					continue;
+				// Streaming for chat completions; fall back to non-stream for others
+				if (url.contains("/v1/chat/completions")) {
+					StringBuilder acc = new StringBuilder();
+					Flux<String> flux = http.post()
+							.uri(url)
+							.headers(h -> {
+								headers.forEach((k, v) -> h.addAll(k, v));
+							})
+							.bodyValue(payload)
+							.retrieve()
+							.bodyToFlux(String.class)
+							.retryWhen(Retry.max(1));
+					flux.blockLast(s -> {
+						try {
+							// Some providers stream JSON lines; append raw for demo
+							acc.append(s);
+						} catch (Exception ignore) {}
+					});
+					if (acc.length() > 0) {
+						try {
+							JsonNode root = mapper.readTree(acc.toString());
+							if (root.has("choices")) {
+								return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
+							}
+						} catch (Exception ignore) {}
+						return Optional.of(acc.toString());
+					}
+				} else {
+					String res = http.post()
+							.uri(url)
+							.headers(h -> headers.forEach((k, v) -> h.addAll(k, v)))
+							.bodyValue(payload)
+							.retrieve()
+							.bodyToMono(String.class)
+							.retryWhen(Retry.max(1))
+							.block();
+					if (res != null) {
+						JsonNode root = mapper.readTree(res);
+						if (root.has("output")) return Optional.ofNullable(root.get("output").asText());
+						if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
+							return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
+						}
+						return Optional.of(res);
+					}
 				}
-				JsonNode root = mapper.readTree(res.getBody());
-				if (root.has("output")) {
-					return Optional.ofNullable(root.get("output").asText());
-				}
-				if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
-					return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
-				}
-				// Last resort: return entire body
-				return Optional.of(res.getBody());
 			} catch (HttpClientErrorException.NotFound nf) {
 				log.warn("Inference path 404, trying next candidate: {}", url);
 			} catch (Exception ex) {
