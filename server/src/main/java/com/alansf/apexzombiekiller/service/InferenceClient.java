@@ -121,7 +121,7 @@ public class InferenceClient {
 				// Streaming for chat completions; fall back to non-stream for others
 				if (url.contains("/v1/chat/completions")) {
 					StringBuilder acc = new StringBuilder();
-					Flux<String> flux = http.post()
+					http.post()
 							.uri(url)
 							.headers(h -> {
 								headers.forEach((k, v) -> h.addAll(k, v));
@@ -129,13 +129,11 @@ public class InferenceClient {
 							.bodyValue(payload)
 							.retrieve()
 							.bodyToFlux(String.class)
-							.retryWhen(Retry.max(1));
-					flux.blockLast(s -> {
-						try {
-							// Some providers stream JSON lines; append raw for demo
-							acc.append(s);
-						} catch (Exception ignore) {}
-					});
+							.doOnNext(s -> {
+								try { acc.append(s); } catch (Exception ignore) {}
+							})
+							.retryWhen(Retry.max(1))
+							.blockLast();
 					if (acc.length() > 0) {
 						try {
 							JsonNode root = mapper.readTree(acc.toString());
