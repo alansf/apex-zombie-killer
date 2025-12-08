@@ -114,11 +114,15 @@
       notes.textContent = r.notes || 'Approved.';
     };
 
-    // Defensive: if this content gets duplicated by host environment, remove extras
+    // Defensive: keep ONLY this app block on the page and remove host-added duplicates
     document.addEventListener('DOMContentLoaded', () => {
+      const root = document.getElementById('transformer-root');
+      // Remove all siblings outside our root (legacy/host UI)
+      Array.from(document.body.children).forEach(el => { if (el !== root) el.remove(); });
+      // If host duplicated the root, keep the first only
       const roots = Array.from(document.querySelectorAll('#transformer-root'));
       if (roots.length > 1) {
-        roots.slice(1).forEach(node => node.parentElement.removeChild(node));
+        roots.slice(1).forEach(node => node.remove());
       }
     });
   </script>
