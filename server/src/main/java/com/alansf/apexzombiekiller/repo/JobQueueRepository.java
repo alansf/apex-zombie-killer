@@ -47,19 +47,19 @@ public class JobQueueRepository {
 
 	public Optional<JobItem> lockNext() {
 		List<JobItem> list = jdbc.query(
-				"UPDATE job_queue SET status='running', started_at=?, attempts=attempts+1 " +
+				"UPDATE job_queue SET status='running', started_at=NOW(), attempts=attempts+1 " +
 						"WHERE id = (" +
 						"  SELECT id FROM job_queue WHERE status='queued' ORDER BY enqueued_at LIMIT 1 FOR UPDATE SKIP LOCKED" +
 						") RETURNING *",
-				row, Instant.now());
+				row);
 		return list.stream().findFirst();
 	}
 
 	public void markDone(UUID id) {
-		jdbc.update("UPDATE job_queue SET status='done', finished_at=? WHERE id=?", Instant.now(), id);
+		jdbc.update("UPDATE job_queue SET status='done', finished_at=NOW() WHERE id=?", id);
 	}
 	public void markError(UUID id, String error) {
-		jdbc.update("UPDATE job_queue SET status='error', finished_at=?, error=? WHERE id=?", Instant.now(), error, id);
+		jdbc.update("UPDATE job_queue SET status='error', finished_at=NOW(), error=? WHERE id=?", error, id);
 	}
 }
 
