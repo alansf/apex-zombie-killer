@@ -23,8 +23,9 @@
   </style>
 </head>
 <body>
-  <h1>Apex Code Transformation Assistant</h1>
-  <div class="grid">
+  <div id="transformer-root">
+    <h1>Apex Code Transformation Assistant</h1>
+    <div class="grid">
     <div class="card">
       <div class="row">
         <select id="target">
@@ -53,6 +54,7 @@
         <button id="btnDownload">Download</button>
       </div>
       <div class="codepane"><pre id="out"></pre></div>
+    </div>
     </div>
   </div>
   <script>
@@ -111,6 +113,14 @@
       const r = await post('/code/approve', body);
       notes.textContent = r.notes || 'Approved.';
     };
+
+    // Defensive: if this content gets duplicated by host environment, remove extras
+    document.addEventListener('DOMContentLoaded', () => {
+      const roots = Array.from(document.querySelectorAll('#transformer-root'));
+      if (roots.length > 1) {
+        roots.slice(1).forEach(node => node.parentElement.removeChild(node));
+      }
+    });
   </script>
 </body>
 </html>
