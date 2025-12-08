@@ -73,12 +73,10 @@ public class CodeController {
 		if (req == null || req.name == null || req.language == null || req.source == null) {
 			throw new IllegalArgumentException("name, language, and source are required");
 		}
-		// Smoke test compile/exec
+		// Smoke test compile/exec (Java only in demo; JS engine may be absent)
 		try {
 			if ("java".equalsIgnoreCase(req.language)) {
 				new com.alansf.apexzombiekiller.service.JavaExecutionAdapter().execute("com.demo.jobs.UserCode", req.source);
-			} else if ("js".equalsIgnoreCase(req.language)) {
-				new com.alansf.apexzombiekiller.service.JsExecutionAdapter().execute(req.source);
 			}
 		} catch (Exception e) {
 			throw new IllegalArgumentException("Compilation/runtime check failed: " + e.getMessage());

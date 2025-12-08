@@ -16,10 +16,11 @@ public class TransformService {
 		String body = req.apexCode == null ? "" : req.apexCode;
 		boolean useConnect = req.options != null && Boolean.TRUE.equals(req.options.useHerokuConnect);
 		boolean genTests = req.options != null && Boolean.TRUE.equals(req.options.generateTests);
-		inference.apexToJava(body, useConnect, genTests).ifPresentOrElse(out -> {
-			res.javaCode = out;
+		var maybe = inference.apexToJava(body, useConnect, genTests);
+		if (maybe.isPresent() && maybe.get() != null && !maybe.get().isBlank()) {
+			res.javaCode = maybe.get();
 			res.notes = "Generated via Managed Inference";
-		}, () -> {
+		} else {
 			res.javaCode =
 					"package com.demo.jobs;\n\n" +
 					"public class ConvertedFromApex {\n" +
@@ -39,7 +40,7 @@ public class TransformService {
 					"    }\n" +
 					"}\n";
 			res.notes = "Fallback stub. Configure INFERENCE_URL and INFERENCE_MODEL_ID for Managed Inference.";
-		});
+		}
 		return res;
 	}
 
@@ -48,17 +49,18 @@ public class TransformService {
 		String body = req.apexCode == null ? "" : req.apexCode;
 		boolean useConnect = req.options != null && Boolean.TRUE.equals(req.options.useHerokuConnect);
 		boolean genTests = req.options != null && Boolean.TRUE.equals(req.options.generateTests);
-		inference.apexToJs(body, useConnect, genTests).ifPresentOrElse(out -> {
-			res.jsCode = out;
+		var maybe = inference.apexToJs(body, useConnect, genTests);
+		if (maybe.isPresent() && maybe.get() != null && !maybe.get().isBlank()) {
+			res.jsCode = maybe.get();
 			res.notes = "Generated via Managed Inference";
-		}, () -> {
+		} else {
 			res.jsCode =
 					"export function convertedFromApex() {\n" +
 					"  /*\n" + body + "\n" +
 					"  */\n" +
 					"}\n";
-			res.notes = "Fallback stub. Configure INFERENCE_ENDPOINT and INFERENCE_MODEL for Managed Inference.";
-		});
+			res.notes = "Fallback stub. Configure INFERENCE_URL and INFERENCE_MODEL_ID for Managed Inference.";
+		}
 		return res;
 	}
 }
