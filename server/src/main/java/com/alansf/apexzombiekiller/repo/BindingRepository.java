@@ -39,8 +39,8 @@ public class BindingRepository {
 		String cfg = "{\"path\":\"" + path + "\"}";
 		Optional<CodeBinding> existing = findWeb(name);
 		if (existing.isPresent()) {
-			jdbc.update("UPDATE code_binding SET config=?::jsonb, updated_at=? WHERE id=?",
-					cfg, Instant.now(), existing.get().id);
+			jdbc.update("UPDATE code_binding SET config=?::jsonb, updated_at=NOW() WHERE id=?",
+					cfg, existing.get().id);
 		} else {
 			jdbc.update("INSERT INTO code_binding(id,name,type,config) VALUES (?,?, 'web', ?::jsonb)",
 					UUID.randomUUID(), name, cfg);

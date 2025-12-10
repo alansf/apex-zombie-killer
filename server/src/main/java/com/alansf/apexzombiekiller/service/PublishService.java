@@ -14,8 +14,8 @@ public class PublishService {
 	}
 
 	public String queueRepublish() {
-		// In a full implementation, call MCP endpoint to run the publish sequence with apispec from /openapi-generated.yaml
-		// For now, log intent and return a pseudo job id.
+		// Dynamic-only OpenAPI: generate from code_binding (no static file writes).
+		// This matches what /openapi-generated.yaml serves; publish via AppLink after approve.
 		String url = System.getenv().getOrDefault("APP_BASE_URL", "https://apex-zombie-killer-6f48e437a14e.herokuapp.com");
 		String yaml = openApiService.generateYaml(url);
 		log.info("Prepared dynamic OpenAPI ({} chars). Ready to publish via MCP.", yaml.length());
