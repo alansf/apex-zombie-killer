@@ -1,9 +1,10 @@
-# Apex Zombie Killer – Single‑App Multi‑Modal Runtime (Postgres‑backed)
+# Apex Zombie Killer – Offload Apex Queries with Heroku Applink
 
 Demo‑ready Spring Boot app that:
-- Transforms Apex → Java/JS using Heroku Managed Inference
-- Approves code, binds it to runtime endpoints, and publishes a dynamic OpenAPI for Salesforce External Services
+- Transforms Apex → Java/JS using Heroku Managed Inference and Agents Addon
+- Approves code, binds it to runtime endpoints, and publishes a dynamic OpenAPI for Salesforce External Services via Heroku Applink
 - Executes code via web, queue, or simulated Postgres trigger paths
+
 - **Salesforce Flow Integration**: Pre-built Screen and Autolaunched Flow templates for executing approved code
 
 ## Key Capabilities
