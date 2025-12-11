@@ -4,6 +4,28 @@ Demo‑ready Spring Boot app that:
 - Transforms Apex → Java/JS using Heroku Managed Inference
 - Approves code, binds it to runtime endpoints, and publishes a dynamic OpenAPI for Salesforce External Services
 - Executes code via web, queue, or simulated Postgres trigger paths
+- **Salesforce Flow Integration**: Pre-built Screen and Autolaunched Flow templates for executing approved code
+
+## Key Capabilities
+
+### Code Transformation & Execution
+- ✅ AI-powered Apex → Java/JS transformation (Heroku Managed Inference)
+- ✅ Code approval workflow with automatic OpenAPI generation
+- ✅ Dynamic code execution (Java in-memory compilation, JS eval)
+- ✅ Execution audit and logging
+
+### Salesforce Integration
+- ✅ **External Services**: Dynamic OpenAPI import for Flow Builder actions
+- ✅ **Flow Templates**: Pre-built Screen and Autolaunched flows
+- ✅ **LWC Embedding**: Full Heroku UI embedded in Lightning pages
+- ✅ **Named Credentials**: Secure connection to Heroku endpoints
+
+### Flow Capabilities
+- ✅ **Screen Flow**: User-facing flows with input/output screens
+- ✅ **Autolaunched Flow**: Background automation for programmatic execution
+- ✅ **External Service Actions**: Call `exec_{name}` actions from approved code
+- ✅ **Error Handling**: Built-in fault paths and error management
+- ✅ **Reusable**: Flows can be called from App Launcher, Record Pages, Apex, or other Flows
 
 ## Quick Start (Local)
 ```bash
@@ -66,9 +88,20 @@ The app uses `WebClient` to stream tokens and aggregates the result. Retries onc
 - Trigger (simulated): `NOTIFY mia_events, '{"job_type":"execute","target_name":"MyJob","payload":{}}'`
 
 ## Salesforce Integration
-1) Named Credential → your Heroku app base URL
-2) External Services → import from `/runtime/openapi.yaml`
-3) Flow → add actions for `/exec/{name}`
+
+### Components
+1. **Named Credential** (`HerokuJobs`) → Heroku app base URL
+2. **CSP Trusted Site** → Allows iframe embedding in LWC
+3. **External Services** → Import from `/openapi-generated.yaml`
+4. **Flow Templates** → Pre-built Screen and Autolaunched flows
+5. **LWC Component** (`herokuAppContainer`) → Embeds Heroku UI in Lightning pages
+
+### Integration Flow
+```
+Apex Code → Transform → Approve → External Service Import → Flow Enhancement → Execute
+```
+
+See sections 6-8 for detailed setup instructions.
 
 ## Troubleshooting
 - 408 from Inference: streaming mitigates; ensure `INFERENCE_*` vars are set and model is valid.
@@ -172,15 +205,44 @@ curl -X POST "$APP/ext/ConvertedFromApex/run" \
   -d '{"payload":{"hello":"world"}}'
 ```
 
-### 7) Flow Templates and Deployment
+### 7) Flow Templates and Capabilities
+
+#### Flow Templates Overview
 
 **Pre-built Flow templates** are included in `force-app/main/default/flows/`:
-- `ExecByName_Screen.flow-meta.xml` — Minimal Screen Flow template (variables + placeholder)
-- `ExecByName_Auto.flow-meta.xml` — Minimal Autolaunched Flow template (variables + placeholder)
+- **`ExecByName_Screen.flow-meta.xml`** — Screen Flow template
+  - **Purpose**: Interactive user-facing flow for executing approved code
+  - **Variables**: `PayloadJSON` (input), `ResultStatus`, `ResultError`
+  - **Use Cases**: App Launcher, Record Pages, User-initiated actions
+  - **Enhancement**: Add input screen, External Service action, result screen in Flow Builder
 
-**Note:** These are minimal deployable flows without screen fields or External Service actions. They provide the basic structure and variables. You'll enhance them in Flow Builder after deployment.
+- **`ExecByName_Auto.flow-meta.xml`** — Autolaunched Flow template
+  - **Purpose**: Background automation for programmatic execution
+  - **Variables**: `ResultStatus`
+  - **Use Cases**: Apex invocation, Subflows, Scheduled automation
+  - **Enhancement**: Replace placeholder with External Service action in Flow Builder
 
-**Deploy flows:**
+**Note:** These are minimal deployable flows (variables + placeholder) to avoid metadata validation errors. They provide the foundation - enhance them visually in Flow Builder where field types are handled automatically.
+
+#### Flow Capabilities
+
+**Screen Flow Capabilities:**
+- ✅ **User Input Collection**: Text Area field for JSON payload input
+- ✅ **External Service Integration**: Call `exec_{name}` actions from approved code
+- ✅ **Result Display**: Show execution status and errors to users
+- ✅ **Error Handling**: Fault paths and error variable mapping
+- ✅ **Navigation**: Back/Finish buttons for user flow control
+- ✅ **Record Context**: Access to record variables when added to Record Pages
+
+**Autolaunched Flow Capabilities:**
+- ✅ **Programmatic Execution**: Invoke from Apex or other Flows
+- ✅ **Background Processing**: No user interaction required
+- ✅ **Subflow Support**: Reusable across multiple parent flows
+- ✅ **Error Handling**: Fault paths for graceful error management
+- ✅ **Variable Passing**: Accept inputs from calling context
+
+#### Deploy Flows
+
 ```bash
 cd /Users/alan.scott/Development/apex-zombie-killer
 
@@ -188,38 +250,156 @@ cd /Users/alan.scott/Development/apex-zombie-killer
 sf project deploy start --source-dir force-app --target-org purple-zombie
 ```
 
-**Complete flow setup (after External Service import):**
-1) **Import External Service** (see step 6) — this creates actions like `exec_ConvertedFromApex`
-2) **Open Flow Builder**: Setup → Flows → Edit `ExecByName_Screen` or `ExecByName_Auto`
-3) **Enhance the flow**:
-   - **For Screen Flow**: Add a Screen element with input field for `PayloadJSON`, then add External Service action
-   - **For Auto Flow**: Replace the placeholder assignment with External Service action
-   - **Add External Service action**: 
-     - Action type: External Service
-     - Select action: `exec_ConvertedFromApex` (or your approved code name)
-     - Map input: `payload` → `PayloadJSON` variable (or `{}` for Auto)
-     - Map outputs: `status` → `ResultStatus`, `error` → `ResultError` (if needed)
-   - **For Screen Flow**: Add a result screen to display `ResultStatus`
-4) **Save and Activate** the flow
+#### Enhance Flows in Flow Builder
 
-**Run flows:**
-- **Screen Flow**: Launch from App Launcher or add to a Record Page → user enters payload JSON → sees result.
-- **Autolaunched Flow**: Invoke via Apex (`Flow.Interview.ExecByName_Auto.start(...)`) or as a subflow.
+**After External Service Import:**
 
-**End-to-end demo:**
-1) Open Salesforce → "Heroku Transformer" page (embedded LWC).
-2) Paste Apex → Transform → enter Name (e.g., `ConvertedFromApex`) → Approve & Publish.
-3) Import External Service from `/openapi-generated.yaml` (see step 6).
-4) Deploy flows: `sf project deploy start --source-dir force-app --target-org purple-zombie`
-5) Edit flows in Flow Builder to add screens and External Service action `exec_ConvertedFromApex`.
-6) Activate flows in Setup → Flows.
-7) Run Screen Flow → enter payload → see execution result.
+1. **Open Flow Builder**: Setup → Flows → Edit `ExecByName_Screen` or `ExecByName_Auto`
 
-### 8) Schema (no psql required)
+2. **For Screen Flow** (`ExecByName_Screen`):
+   - **Add Input Screen**:
+     - Click "+" → Select "Screen"
+     - Add field → Variable → `PayloadJSON`
+     - Field type: Text Area (for JSON input)
+     - Label: "Payload (JSON)"
+   - **Add External Service Action**:
+     - Click "+" after input screen
+     - Action → External Service → Select `exec_ConvertedFromApex`
+     - Map `payload` input → `{!PayloadJSON}`
+     - Map outputs: `status` → `{!ResultStatus}`, `error` → `{!ResultError}`
+   - **Add Result Screen**:
+     - Click "+" after External Service action
+     - Add Display Text fields showing `{!ResultStatus}` and `{!ResultError}`
+   - **Connect**: Start → Input Screen → External Service → Result Screen → End
+
+3. **For Autolaunched Flow** (`ExecByName_Auto`):
+   - **Replace Placeholder**:
+     - Delete "Placeholder Assignment" element
+     - Add External Service action
+     - Select `exec_ConvertedFromApex`
+     - Map `payload` → `{}` (empty object) or use input variable
+     - Map outputs → `{!ResultStatus}`
+   - **Add Error Handling** (optional):
+     - Add fault path from External Service action
+     - Set error variables or log errors
+
+4. **Save and Activate**: Click Save → Activate
+
+**See `FLOW_SETUP_GUIDE.md` for detailed step-by-step instructions with visual diagrams.**
+
+#### Running Flows
+
+**Screen Flow:**
+```bash
+# Launch from App Launcher
+# Search for "Execute Code by Name (Screen)"
+# Enter payload: {"test":"data"}
+# Click Next → See execution result
+```
+
+**Autolaunched Flow:**
+```apex
+// Invoke from Apex
+Map<String, Object> inputs = new Map<String, Object>();
+Flow.Interview.ExecByName_Auto flow = new Flow.Interview.ExecByName_Auto(inputs);
+flow.start();
+```
+
+**Or use as Subflow:**
+- Add "Subflow" element in another Flow
+- Select `ExecByName_Auto`
+- Pass inputs if needed
+
+### 8) Complete Demo Flow
+
+#### Demo Scenario: Transform Apex → Execute via Flow
+
+**Step 1: Transform & Approve Code**
+1. Open Salesforce → Navigate to "Heroku Transformer" page (embedded LWC)
+2. Paste Apex code (see examples in section 9)
+3. Select target: **Java** or **JavaScript**
+4. Click **"Transform"** → Review generated code in tabs (Java/JS/Test/Notes)
+5. Enter name: `ConvertedFromApex` (or your preferred name)
+6. Click **"Approve & Publish"**
+   - ✅ Code saved to `transformed_code` table
+   - ✅ Web binding created: `/exec/ConvertedFromApex`
+   - ✅ Compile and publish jobs enqueued
+   - ✅ OpenAPI spec updated automatically
+   - ✅ Ready for External Service import
+
+**Step 2: Import External Service**
+1. Setup → External Services → **Add Service**
+2. Import from URL:
+   ```
+   https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml
+   ```
+3. Named Credential: `HerokuJobs`
+4. After import, action `exec_ConvertedFromApex` appears in Flow Builder
+
+**Step 3: Deploy & Enhance Flows**
+1. Deploy flows:
+   ```bash
+   sf project deploy start --source-dir force-app --target-org purple-zombie
+   ```
+2. Open Flow Builder → Edit `ExecByName_Screen`
+3. Enhance flow (see section 7 above)
+4. Activate flow
+
+**Step 4: Execute via Flow**
+1. Launch Screen Flow from App Launcher
+2. Enter payload JSON: `{"test":"data"}`
+3. Click Next → Flow calls External Service action
+4. Result screen displays execution status
+
+**Step 5: Verify Execution**
+- Check Heroku logs: `heroku logs --tail -a apex-zombie-killer`
+- Check execution audit in database (if UI available)
+- Verify result in Flow's result screen
+
+#### Alternative: Direct REST Execution
+
+If you prefer not to use Flows, you can call the endpoints directly:
+
+```bash
+APP=https://apex-zombie-killer-6f48e437a14e.herokuapp.com
+
+# Direct exec endpoint
+curl -X POST "$APP/exec/ConvertedFromApex" \
+  -H 'Content-Type: application/json' \
+  -d '{"payload":{"hello":"world"}}'
+
+# External alias (matches OpenAPI)
+curl -X POST "$APP/ext/ConvertedFromApex/run" \
+  -H 'Content-Type: application/json' \
+  -d '{"payload":{"hello":"world"}}'
+```
+
+#### Demo Notes
+
+**Why Use Flows?**
+- **No Code Required**: Visual Flow Builder interface
+- **User-Friendly**: Screen Flows provide UI for non-technical users
+- **Salesforce Native**: Integrated with Salesforce security and permissions
+- **Reusable**: Flows can be called from multiple places
+- **Error Handling**: Built-in fault paths and error management
+
+**When to Use Each Flow Type:**
+- **Screen Flow**: User-initiated actions, Record Page buttons, App Launcher
+- **Autolaunched Flow**: Background automation, Scheduled jobs, Apex-triggered execution
+
+**Best Practices:**
+- Always test flows before activating
+- Use meaningful variable names
+- Add help text to screen fields
+- Handle errors gracefully with fault paths
+- Document your flows with descriptions
+- Consider adding decision elements for conditional logic
+
+### 9) Schema (no psql required)
 - The app creates tables on startup. If you prefer migrations:
   - Add Flyway and `db/migration/V1__init.sql` or use Spring `schema.sql` with `spring.sql.init.mode=always`
 
-### 9) Paste‑ready Apex snippets
+### 10) Paste‑ready Apex snippets
 
 These avoid custom fields and use standard objects; ideal for quick transforms.
 
@@ -301,11 +481,46 @@ public with sharing class OpportunityAndSplitBatch implements Database.Batchable
 }
 ```
 
-### 10) Notes
+### 11) Quick Reference: Demo Flow Checklist
+
+**Complete End-to-End Demo:**
+
+```bash
+# 1. Transform & Approve (in Salesforce UI)
+[ ] Open "Heroku Transformer" page
+[ ] Paste Apex code → Transform → Approve & Publish
+
+# 2. Import External Service (Salesforce Setup)
+[ ] Setup → External Services → Add Service
+[ ] Import from: https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml
+[ ] Named Credential: HerokuJobs
+
+# 3. Deploy Flows (SFDX)
+[ ] sf project deploy start --source-dir force-app --target-org purple-zombie
+
+# 4. Enhance Flows (Flow Builder)
+[ ] Setup → Flows → Edit ExecByName_Screen
+[ ] Add input screen with PayloadJSON field
+[ ] Add External Service action (exec_ConvertedFromApex)
+[ ] Add result screen
+[ ] Save and Activate
+
+# 5. Execute Flow
+[ ] Launch Screen Flow from App Launcher
+[ ] Enter payload: {"test":"data"}
+[ ] View execution result
+
+# 6. Verify (Optional)
+[ ] Check Heroku logs: heroku logs --tail -a apex-zombie-killer
+[ ] Test direct REST: curl -X POST https://apex-zombie-killer-6f48e437a14e.herokuapp.com/exec/ConvertedFromApex -d '{"payload":{}}'
+```
+
+### 12) Notes
 - For the embedded LWC demo we run without the AppLink Service Mesh so the iframe renders anonymously. To enforce SSO later, switch Procfile back to mesh and embed using an AppLink‑authenticated URL.
 - **Dynamic OpenAPI**: Generated from `code_binding` entries; served at `/openapi-generated.yaml`. No static file writes. After Approve & Publish, the spec updates automatically (no app redeploy needed).
 - **Exec endpoints**: `POST /exec/{name}` is the internal execution entrypoint; `/ext/{name}/run` is the External Services alias (both use the same `code_binding` mapping).
-- **Flow templates**: Use placeholder `exec__PLACEHOLDER__` that gets patched to `exec_<name>` before deploy. This keeps flows reusable across different approved code names.
+- **Flow templates**: Minimal deployable structures (variables + placeholder). Enhance in Flow Builder to avoid metadata enum validation issues. Flow Builder handles field types automatically.
+- **Flow capabilities**: Screen Flows provide user-facing UI for interactive execution; Autolaunched Flows enable background automation and programmatic invocation.
 
 
 
