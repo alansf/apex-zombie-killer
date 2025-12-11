@@ -133,21 +133,6 @@ A demo-ready Spring Boot application that demonstrates how to:
 
 ## Quick Start
 
-### Local Development
-
-**Prerequisites:**
-- Java 21+ and Maven
-- PostgreSQL (or use Heroku Postgres locally)
-
-```bash
-# Clone and build
-cd /Users/alan.scott/Development/apex-zombie-killer
-mvn -f server/pom.xml -DskipTests package
-java -jar server/target/app.jar
-```
-
-Open `http://localhost:8080/` and try a transform + Approve.
-
 ### Heroku Deployment
 
 **Prerequisites:**
@@ -155,34 +140,23 @@ Open `http://localhost:8080/` and try a transform + Approve.
 - Heroku CLI installed
 - Git repository initialized
 
-```bash
-APP=apex-zombie-killer
+**Build and deploy:**
+- `git add .`
+- `git commit -m "Deploy: Apex Zombie Killer"`
+- `git push heroku main`
 
-# Build and deploy
-git add .
-git commit -m "Deploy: Apex Zombie Killer"
-git push heroku main
+**Required config vars:**
+- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer`
 
-# Required config vars
-heroku config:set \
-  INFERENCE_URL="https://us.inference.heroku.com" \
-  INFERENCE_MODEL_ID="claude-4-5-sonnet" \
-  INFERENCE_KEY="<your_inference_key>" \
-  -a $APP
-
-# Verify deployment
-heroku logs --tail -a $APP
-heroku ps -a $APP
-```
+**Verify deployment:**
+- `heroku logs --tail -a apex-zombie-killer`
+- `heroku ps -a apex-zombie-killer`
 
 **Add-ons:**
-```bash
-# Postgres (required)
-heroku addons:create heroku-postgresql:standard-0 -a $APP
-
-# AppLink (optional, for SSO)
-heroku addons:create heroku-applink:demo -a $APP
-```
+- Postgres (required): `heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer`
+- AppLink (optional, for SSO): `heroku addons:create heroku-applink:demo -a apex-zombie-killer`
 
 ---
 
@@ -191,25 +165,20 @@ heroku addons:create heroku-applink:demo -a $APP
 ### Heroku Setup
 
 **1. Build and Deploy**
-```bash
-cd /Users/alan.scott/Development/apex-zombie-killer
-mvn -q -DskipTests -f pom.xml clean package
-heroku buildpacks:clear -a apex-zombie-killer
-heroku buildpacks:add heroku/java -a apex-zombie-killer
-git push heroku main
-```
+- `heroku buildpacks:clear -a apex-zombie-killer`
+- `heroku buildpacks:add heroku/java -a apex-zombie-killer`
+- `git push heroku main`
 
 **2. Configure Environment Variables**
-```bash
-# Managed Inference (required)
-heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer
-heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer
-heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer
 
-# Optional: AppLink API vars (for programmatic orchestration)
-heroku config:set HEROKU_APPLINK_API_URL="<applink_api_url>" -a apex-zombie-killer
-heroku config:set HEROKU_APPLINK_TOKEN="<applink_token>" -a apex-zombie-killer
-```
+Managed Inference (required):
+- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer`
+
+Optional: AppLink API vars (for programmatic orchestration):
+- `heroku config:set HEROKU_APPLINK_API_URL="<applink_api_url>" -a apex-zombie-killer`
+- `heroku config:set HEROKU_APPLINK_TOKEN="<applink_token>" -a apex-zombie-killer`
 
 **3. Database Schema**
 The app automatically creates tables on startup via `schema.sql`:
@@ -222,25 +191,14 @@ The app automatically creates tables on startup via `schema.sql`:
 ### Salesforce Deployment
 
 **1. Authenticate**
-```bash
-sf org login web --instance-url https://purple-zombie.my.salesforce.com --alias purple-zombie --set-default
-```
+- `sf org login web --instance-url https://purple-zombie.my.salesforce.com --alias purple-zombie --set-default`
 
 **2. Deploy Metadata**
-```bash
-sf project deploy start --source-dir force-app --target-org purple-zombie
-sf org assign permset --name ManageHerokuAppLink --target-org purple-zombie
-```
+- `sf project deploy start --source-dir force-app --target-org purple-zombie`
+- `sf org assign permset --name ManageHerokuAppLink --target-org purple-zombie`
 
 **3. Publish AppLink (Optional)**
-```bash
-heroku salesforce:publish apispec.yaml \
-  --client-name HerokuAPI \
-  --connection-name purple-zombie \
-  --authorization-connected-app-name "MyAppLinkApp" \
-  --authorization-permission-set-name "ManageHerokuAppLink" \
-  -a apex-zombie-killer
-```
+- `heroku salesforce:publish apispec.yaml --client-name HerokuAPI --connection-name purple-zombie --authorization-connected-app-name "MyAppLinkApp" --authorization-permission-set-name "ManageHerokuAppLink" -a apex-zombie-killer`
 
 **4. Link App & Embed UI**
 - Setup → Heroku → Link App → `apex-zombie-killer`
@@ -279,21 +237,6 @@ Apex Code → Transform → Approve → External Service Import → Flow Enhance
    ```
 3. Named Credential: `HerokuJobs`
 4. After import, actions like `exec_ConvertedFromApex` appear in Flow Builder
-
-**Direct REST Calls:**
-```bash
-APP=https://apex-zombie-killer-6f48e437a14e.herokuapp.com
-
-# Direct exec endpoint (internal)
-curl -X POST "$APP/exec/ConvertedFromApex" \
-  -H 'Content-Type: application/json' \
-  -d '{"payload":{"hello":"world"}}'
-
-# External alias (matches OpenAPI operationId)
-curl -X POST "$APP/ext/ConvertedFromApex/run" \
-  -H 'Content-Type: application/json' \
-  -d '{"payload":{"hello":"world"}}'
-```
 
 ---
 
@@ -337,10 +280,7 @@ curl -X POST "$APP/ext/ConvertedFromApex/run" \
 ### Deploy & Enhance Flows
 
 **1. Deploy Flows**
-```bash
-cd /Users/alan.scott/Development/apex-zombie-killer
-sf project deploy start --source-dir force-app --target-org purple-zombie
-```
+- `sf project deploy start --source-dir force-app --target-org purple-zombie`
 
 **2. Enhance in Flow Builder**
 
@@ -427,10 +367,7 @@ flow.start();
 4. After import, action `exec_ConvertedFromApex` appears in Flow Builder
 
 **Step 3: Deploy & Enhance Flows**
-1. Deploy flows:
-   ```bash
-   sf project deploy start --source-dir force-app --target-org purple-zombie
-   ```
+1. Deploy flows: `sf project deploy start --source-dir force-app --target-org purple-zombie`
 2. Open Flow Builder → Edit `ExecByName_Screen`
 3. Enhance flow (see Flow Templates section above)
 4. Activate flow
@@ -448,35 +385,32 @@ flow.start();
 
 ### Demo Checklist
 
-```bash
-# 1. Transform & Approve (in Salesforce UI)
-[ ] Open "Heroku Transformer" page
-[ ] Paste Apex code → Transform → Approve & Publish
+**1. Transform & Approve (in Salesforce UI)**
+- [ ] Open "Heroku Transformer" page
+- [ ] Paste Apex code → Transform → Approve & Publish
 
-# 2. Import External Service (Salesforce Setup)
-[ ] Setup → External Services → Add Service
-[ ] Import from: https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml
-[ ] Named Credential: HerokuJobs
+**2. Import External Service (Salesforce Setup)**
+- [ ] Setup → External Services → Add Service
+- [ ] Import from: https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml
+- [ ] Named Credential: HerokuJobs
 
-# 3. Deploy Flows (SFDX)
-[ ] sf project deploy start --source-dir force-app --target-org purple-zombie
+**3. Deploy Flows (SFDX)**
+- [ ] `sf project deploy start --source-dir force-app --target-org purple-zombie`
 
-# 4. Enhance Flows (Flow Builder)
-[ ] Setup → Flows → Edit ExecByName_Screen
-[ ] Add input screen with PayloadJSON field
-[ ] Add External Service action (exec_ConvertedFromApex)
-[ ] Add result screen
-[ ] Save and Activate
+**4. Enhance Flows (Flow Builder)**
+- [ ] Setup → Flows → Edit ExecByName_Screen
+- [ ] Add input screen with PayloadJSON field
+- [ ] Add External Service action (exec_ConvertedFromApex)
+- [ ] Add result screen
+- [ ] Save and Activate
 
-# 5. Execute Flow
-[ ] Launch Screen Flow from App Launcher
-[ ] Enter payload: {"test":"data"}
-[ ] View execution result
+**5. Execute Flow**
+- [ ] Launch Screen Flow from App Launcher
+- [ ] Enter payload: `{"test":"data"}`
+- [ ] View execution result
 
-# 6. Verify (Optional)
-[ ] Check Heroku logs: heroku logs --tail -a apex-zombie-killer
-[ ] Test direct REST: curl -X POST https://apex-zombie-killer-6f48e437a14e.herokuapp.com/exec/ConvertedFromApex -d '{"payload":{}}'
-```
+**6. Verify (Optional)**
+- [ ] Check Heroku logs: `heroku logs --tail -a apex-zombie-killer`
 
 ### Demo Notes
 
@@ -608,7 +542,6 @@ public with sharing class OpportunityAndSplitBatch implements Database.Batchable
 - Verify External Service is imported correctly
 - Check Named Credential configuration
 - Review Flow Builder error messages
-- Test direct REST endpoint first: `curl -X POST https://apex-zombie-killer-6f48e437a14e.herokuapp.com/exec/{name}`
 
 **LWC Embedding Issues:**
 - Verify CSP Trusted Site is configured: Setup → CSP Trusted Sites
@@ -619,31 +552,16 @@ public with sharing class OpportunityAndSplitBatch implements Database.Batchable
 ### Debugging
 
 **View Application Logs:**
-```bash
-heroku logs --tail -a apex-zombie-killer
-```
+- `heroku logs --tail -a apex-zombie-killer`
 
 **Check Database:**
-```bash
-heroku pg:psql -a apex-zombie-killer
-# Then run: SELECT * FROM transformed_code; SELECT * FROM code_binding;
-```
+- `heroku pg:psql -a apex-zombie-killer`
+- Then run: `SELECT * FROM transformed_code; SELECT * FROM code_binding;`
 
 **Test Endpoints:**
-```bash
-APP=https://apex-zombie-killer-6f48e437a14e.herokuapp.com
-
-# Health check
-curl "$APP/actuator/health"
-
-# OpenAPI spec
-curl "$APP/openapi-generated.yaml"
-
-# Transform test
-curl -X POST "$APP/transform/apex-to-java" \
-  -H 'Content-Type: application/json' \
-  -d '{"apexCode":"public class Test { public void run() {} }"}'
-```
+- Health check: `curl https://apex-zombie-killer-6f48e437a14e.herokuapp.com/actuator/health`
+- OpenAPI spec: `curl https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml`
+- Transform test: `curl -X POST https://apex-zombie-killer-6f48e437a14e.herokuapp.com/transform/apex-to-java -H 'Content-Type: application/json' -d '{"apexCode":"public class Test { public void run() {} }"}'`
 
 ---
 
