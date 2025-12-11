@@ -54,12 +54,14 @@ public class InferenceClient {
 
 	private Optional<String> callTransform(String target, String apexCode, boolean useHerokuConnect, boolean generateTests) {
 		if (endpoint().isEmpty() || model().isEmpty()) {
+			log.warn("Inference not configured: endpoint={}, model={}", endpoint().orElse("missing"), model().orElse("missing"));
 			return Optional.empty();
 		}
 		// Build headers once
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		bearerToken().ifPresent(tok -> headers.set("Authorization", "Bearer " + tok));
+		log.debug("Calling inference: endpoint={}, model={}", endpoint().get(), model().get());
 
 		// Construct a flexible body that can satisfy common schemas
 		Map<String, Object> body = new HashMap<>();
@@ -120,28 +122,93 @@ public class InferenceClient {
 
 				// Streaming for chat completions; fall back to non-stream for others
 				if (url.contains("/v1/chat/completions")) {
-					StringBuilder acc = new StringBuilder();
-					http.post()
-							.uri(url)
-							.headers(h -> {
-								headers.forEach((k, v) -> h.addAll(k, v));
-							})
-							.bodyValue(payload)
-							.retrieve()
-							.bodyToFlux(String.class)
-							.doOnNext(s -> {
-								try { acc.append(s); } catch (Exception ignore) {}
-							})
-							.retryWhen(Retry.max(1))
-							.blockLast();
-					if (acc.length() > 0) {
+					StringBuilder contentAccumulator = new StringBuilder();
+					try {
+						log.debug("Attempting streaming request to: {}", url);
+						http.post()
+								.uri(url)
+								.headers(h -> {
+									headers.forEach((k, v) -> h.addAll(k, v));
+									h.set("Accept", "text/event-stream"); // SSE format
+								})
+								.bodyValue(payload)
+								.retrieve()
+								.bodyToFlux(String.class)
+								.doOnNext(chunk -> {
+									// Handle SSE format: "data: {...}\n\n" or plain JSON chunks
+									if (chunk != null && !chunk.isBlank()) {
+										String[] lines = chunk.split("\n");
+										for (String line : lines) {
+											line = line.trim();
+											if (line.startsWith("data: ")) {
+												line = line.substring(6); // Remove "data: " prefix
+											}
+											if (line.equals("[DONE]") || line.isEmpty()) {
+												continue;
+											}
+											try {
+												JsonNode node = mapper.readTree(line);
+												// Extract content from delta or message
+												if (node.has("choices") && node.get("choices").isArray() && node.get("choices").size() > 0) {
+													JsonNode choice = node.get("choices").get(0);
+													if (choice.has("delta") && choice.get("delta").has("content")) {
+														String deltaContent = choice.get("delta").get("content").asText();
+														if (deltaContent != null && !deltaContent.isBlank()) {
+															contentAccumulator.append(deltaContent);
+														}
+													} else if (choice.has("message") && choice.get("message").has("content")) {
+														String msgContent = choice.get("message").get("content").asText();
+														if (msgContent != null && !msgContent.isBlank()) {
+															contentAccumulator.append(msgContent);
+														}
+													}
+												}
+											} catch (Exception e) {
+												// Not JSON, might be partial chunk - accumulate as-is
+												if (!line.startsWith("data:") && !line.equals("[DONE]")) {
+													contentAccumulator.append(line);
+												}
+											}
+										}
+									}
+								})
+								.doOnError(err -> log.warn("Streaming error for url={}, error={}", url, err.getMessage(), err))
+								.retryWhen(Retry.max(1))
+								.blockLast();
+						log.debug("Streaming completed, accumulated {} chars", contentAccumulator.length());
+					} catch (Exception ex) {
+						log.error("Streaming request failed for url={}, error={}", url, ex.getMessage(), ex);
+					}
+					if (contentAccumulator.length() > 0) {
+						log.info("Successfully extracted {} chars from inference stream", contentAccumulator.length());
+						return Optional.of(contentAccumulator.toString());
+					} else {
+						log.warn("No content extracted from inference stream for url={}, trying non-streaming fallback", url);
+						// Fallback to non-streaming request
 						try {
-							JsonNode root = mapper.readTree(acc.toString());
-							if (root.has("choices")) {
-								return Optional.ofNullable(root.get("choices").get(0).path("message").path("content").asText());
+							Map<String, Object> nonStreamPayload = new HashMap<>(payload);
+							nonStreamPayload.remove("stream"); // Remove stream flag
+							String res = http.post()
+									.uri(url)
+									.headers(h -> headers.forEach((k, v) -> h.addAll(k, v)))
+									.bodyValue(nonStreamPayload)
+									.retrieve()
+									.bodyToMono(String.class)
+									.retryWhen(Retry.max(1))
+									.block();
+							if (res != null && !res.isBlank()) {
+								JsonNode root = mapper.readTree(res);
+								if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
+									String content = root.get("choices").get(0).path("message").path("content").asText();
+									if (content != null && !content.isBlank()) {
+										log.info("Successfully got content from non-streaming response");
+										return Optional.of(content);
+									}
+								}
 							}
-						} catch (Exception ignore) {}
-						return Optional.of(acc.toString());
+						} catch (Exception fallbackEx) {
+							log.warn("Non-streaming fallback also failed for url={}", url, fallbackEx);
+						}
 					}
 				} else {
 					String res = http.post()
@@ -164,10 +231,11 @@ public class InferenceClient {
 			} catch (HttpClientErrorException.NotFound nf) {
 				log.warn("Inference path 404, trying next candidate: {}", url);
 			} catch (Exception ex) {
-				log.error("Inference unexpected error for url={}", url, ex);
+				log.error("Inference unexpected error for url={}, error={}", url, ex.getMessage(), ex);
 				// Move on to next candidate
 			}
 		}
+		log.warn("All inference URL candidates failed. Check INFERENCE_URL, INFERENCE_MODEL_ID, and INFERENCE_KEY.");
 		return Optional.empty();
 	}
 
