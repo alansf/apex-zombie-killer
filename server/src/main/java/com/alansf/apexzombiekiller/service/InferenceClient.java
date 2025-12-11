@@ -68,8 +68,10 @@ public class InferenceClient {
 		body.put("model", model().get());
 
 		String system = "You convert Salesforce Apex to efficient, bulk-safe " +
-			(target.equals("java") ? "Java for Spring Boot with Heroku Postgres + Heroku Connect." : "JavaScript for Node/Heroku.") +
-			" Replace SOQL/DML-in-loops, use batching, indexed filters, and selective fields. Output only the code.";
+			(target.equals("java") 
+				? "standalone executable Java code. Generate a single public class with a public void run() method (or public static void main(String[] args)). Use standard Java libraries only - no Spring annotations (@Service, @Autowired, etc.). The code should be self-contained and executable without framework dependencies. Replace SOQL/DML-in-loops with batch processing, use indexed filters, and selective fields."
+				: "JavaScript for Node/Heroku.") +
+			" Output only the code, no explanations.";
 		String user = "Options: useHerokuConnect=" + useHerokuConnect + ", generateTests=" + generateTests + "\nApex code:\n" + apexCode;
 		// OpenAI/Anthropic-style messages (array)
 		body.put("messages", List.of(

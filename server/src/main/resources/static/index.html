@@ -7,15 +7,16 @@
   <style>
     body { font-family: Inter, system-ui, Arial; margin: 0; padding: 16px; background: #FFFFFF; color: #181818; }
     h1 { margin: 0 0 8px 0; color: #430098; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-    textarea { width: 100%; min-height: 320px; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #F3F3F3; color: #181818; border: 1px solid #D8D8D8; }
-    .card { background: #FFFFFF; border: 1px solid #D8D8D8; border-radius: 10px; padding: 12px; }
+    .grid { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+    textarea { width: 100%; min-height: 320px; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #F3F3F3; color: #181818; border: 1px solid #D8D8D8; resize: both; }
+    .card { background: #FFFFFF; border: 1px solid #D8D8D8; border-radius: 10px; padding: 12px; min-width: 0; }
+    .card:last-child { overflow: visible; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     select, button, input[type="text"] { height: 36px; border-radius: 8px; border: 1px solid #D8D8D8; background: #F3F3F3; color: #181818; padding: 0 10px; }
     .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
     .tab { padding: 4px 8px; border: 1px solid #D8D8D8; border-radius: 6px; cursor: pointer; background: #F3F3F3; }
     .tab.active { background: #430098; border-color: #430098; color: #fff; }
-    .codepane { border: 1px solid #D8D8D8; border-radius: 8px; padding: 8px; background: #F9F9F9; max-height: 60vh; overflow: auto; resize: both; min-width: 200px; min-height: 200px; }
+    .codepane { border: 1px solid #D8D8D8; border-radius: 8px; padding: 8px; background: #F9F9F9; max-height: 60vh; max-width: none; overflow: auto; resize: both; min-width: 200px; min-height: 200px; width: 100%; display: block; }
     pre { margin: 0; white-space: pre; }
     .primary { background: #430098; border-color: #430098; color: #fff; }
     .primary:hover { background: #6F359C; border-color: #6F359C; }
