@@ -20,7 +20,6 @@
     pre { margin: 0; white-space: pre; }
     .primary { background: #430098; border-color: #430098; color: #fff; }
     .primary:hover { background: #6F359C; border-color: #6F359C; }
-    .toolbar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 6px; }
   </style>
 </head>
 <body>
@@ -50,10 +49,6 @@
         <div class="tab" data-tab="test">Test</div>
         <div class="tab" data-tab="notes">Notes</div>
       </div>
-      <div class="toolbar">
-        <button id="btnCopy">Copy</button>
-        <button id="btnDownload">Download</button>
-      </div>
       <div class="codepane"><pre id="out"></pre></div>
     </div>
     </div>
@@ -74,18 +69,6 @@
       out.textContent = buffers[tab] || '';
     }
     document.querySelectorAll('.tab').forEach(t => t.onclick = () => setTab(t.dataset.tab));
-    document.getElementById('btnCopy').onclick = async () => {
-      await navigator.clipboard.writeText(out.textContent || '');
-    };
-    document.getElementById('btnDownload').onclick = () => {
-      const blob = new Blob([out.textContent || ''], {type:'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = (activeTab === 'java' ? 'ConvertedFromApex.java' : activeTab === 'js' ? 'convertedFromApex.js' : activeTab + '.txt');
-      a.click();
-      URL.revokeObjectURL(url);
-    };
 
     async function post(path, body) {
       const res = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
