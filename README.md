@@ -146,17 +146,17 @@ A demo-ready Spring Boot application that demonstrates how to:
 - `git push heroku main`
 
 **Required config vars:**
-- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer`
-- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer`
-- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a <app-name>`
+- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a <app-name>`
+- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a <app-name>`
 
 **Verify deployment:**
-- `heroku logs --tail -a apex-zombie-killer`
-- `heroku ps -a apex-zombie-killer`
+- `heroku logs --tail -a <app-name>`
+- `heroku ps -a <app-name>`
 
 **Add-ons:**
-- Postgres (required): `heroku addons:create heroku-postgresql:standard-0 -a apex-zombie-killer`
-- AppLink (optional, for SSO): `heroku addons:create heroku-applink:demo -a apex-zombie-killer`
+- Postgres (required): `heroku addons:create heroku-postgresql:standard-0 -a <app-name>`
+- AppLink (optional, for SSO): `heroku addons:create heroku-applink:demo -a <app-name>`
 
 ---
 
@@ -165,20 +165,20 @@ A demo-ready Spring Boot application that demonstrates how to:
 ### Heroku Setup
 
 **1. Build and Deploy**
-- `heroku buildpacks:clear -a apex-zombie-killer`
-- `heroku buildpacks:add heroku/java -a apex-zombie-killer`
+- `heroku buildpacks:clear -a <app-name>`
+- `heroku buildpacks:add heroku/java -a <app-name>`
 - `git push heroku main`
 
 **2. Configure Environment Variables**
 
 Managed Inference (required):
-- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a apex-zombie-killer`
-- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a apex-zombie-killer`
-- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a apex-zombie-killer`
+- `heroku config:set INFERENCE_URL="https://us.inference.heroku.com" -a <app-name>`
+- `heroku config:set INFERENCE_MODEL_ID="claude-4-5-sonnet" -a <app-name>`
+- `heroku config:set INFERENCE_KEY="<your_inference_key>" -a <app-name>`
 
 Optional: AppLink API vars (for programmatic orchestration):
-- `heroku config:set HEROKU_APPLINK_API_URL="<applink_api_url>" -a apex-zombie-killer`
-- `heroku config:set HEROKU_APPLINK_TOKEN="<applink_token>" -a apex-zombie-killer`
+- `heroku config:set HEROKU_APPLINK_API_URL="<applink_api_url>" -a <app-name>`
+- `heroku config:set HEROKU_APPLINK_TOKEN="<applink_token>" -a <app-name>`
 
 **3. Database Schema**
 The app automatically creates tables on startup via `schema.sql`:
@@ -191,19 +191,19 @@ The app automatically creates tables on startup via `schema.sql`:
 ### Salesforce Deployment
 
 **1. Authenticate**
-- `sf org login web --instance-url https://purple-zombie.my.salesforce.com --alias purple-zombie --set-default`
+- `sf org login web --instance-url <your-instance-url> --alias <org-alias> --set-default`
 
 **2. Deploy Metadata**
-- `sf project deploy start --source-dir force-app --target-org purple-zombie`
-- `sf org assign permset --name ManageHerokuAppLink --target-org purple-zombie`
+- `sf project deploy start --source-dir force-app --target-org <org-alias>`
+- `sf org assign permset --name <permission-set-name> --target-org <org-alias>`
 
 **3. Publish AppLink (Optional)**
-- `heroku salesforce:publish apispec.yaml --client-name HerokuAPI --connection-name purple-zombie --authorization-connected-app-name "MyAppLinkApp" --authorization-permission-set-name "ManageHerokuAppLink" -a apex-zombie-killer`
+- `heroku salesforce:publish apispec.yaml --client-name <client-name> --connection-name <org-alias> --authorization-connected-app-name <connected-app-name> --authorization-permission-set-name <permission-set-name> -a <app-name>`
 
 **4. Link App & Embed UI**
-- Setup → Heroku → Link App → `apex-zombie-killer`
-- App Builder → Add `herokuAppContainer` to an App Page or Record Page
-- Set `appUrl` to: `https://apex-zombie-killer-6f48e437a14e.herokuapp.com/`
+- Setup → Heroku → Link App → `<app-name>`
+- App Builder → Add `<lwc-component-name>` to an App Page or Record Page
+- Set `appUrl` to: `<your-heroku-app-url>`
 
 ---
 
@@ -230,13 +230,13 @@ Apex Code → Transform → Approve → External Service Import → Flow Enhance
 **OpenAPI is dynamic-only** (no static file writes). The spec is generated from `code_binding` entries and served at `/openapi-generated.yaml`. After each Approve & Publish, the spec updates automatically.
 
 **Import External Services:**
-1. Approve code in the UI (e.g., name `ConvertedFromApex`) → wait for publish job to finish
+1. Approve code in the UI (e.g., name `<code-name>`) → wait for publish job to finish
 2. Setup → External Services → Add Service → Import from URL:
    ```
-   https://apex-zombie-killer-6f48e437a14e.herokuapp.com/openapi-generated.yaml
+   <your-heroku-app-url>/openapi-generated.yaml
    ```
-3. Named Credential: `HerokuJobs`
-4. After import, actions like `exec_ConvertedFromApex` appear in Flow Builder
+3. Named Credential: `<named-credential>`
+4. After import, actions like `exec_<code-name>` appear in Flow Builder
 
 ---
 
@@ -280,12 +280,12 @@ Apex Code → Transform → Approve → External Service Import → Flow Enhance
 ### Deploy & Enhance Flows
 
 **1. Deploy Flows**
-- `sf project deploy start --source-dir force-app --target-org purple-zombie`
+- `sf project deploy start --source-dir force-app --target-org <org-alias>`
 
 **2. Enhance in Flow Builder**
 
-**For Screen Flow** (`ExecByName_Screen`):
-1. Open Flow Builder: Setup → Flows → Edit `ExecByName_Screen`
+**For Screen Flow** (`<screen-flow-name>`):
+1. Open Flow Builder: Setup → Flows → Edit `<screen-flow-name>`
 2. **Add Input Screen**:
    - Click "+" → Select "Screen"
    - Add field → Variable → `PayloadJSON`
@@ -293,7 +293,7 @@ Apex Code → Transform → Approve → External Service Import → Flow Enhance
    - Label: "Payload (JSON)"
 3. **Add External Service Action**:
    - Click "+" after input screen
-   - Action → External Service → Select `exec_ConvertedFromApex`
+   - Action → External Service → Select `exec_<code-name>`
    - Map `payload` input → `{!PayloadJSON}`
    - Map outputs: `status` → `{!ResultStatus}`, `error` → `{!ResultError}`
 4. **Add Result Screen**:
@@ -302,12 +302,12 @@ Apex Code → Transform → Approve → External Service Import → Flow Enhance
 5. **Connect**: Start → Input Screen → External Service → Result Screen → End
 6. **Save and Activate**
 
-**For Autolaunched Flow** (`ExecByName_Auto`):
-1. Open Flow Builder: Setup → Flows → Edit `ExecByName_Auto`
+**For Autolaunched Flow** (`<auto-flow-name>`):
+1. Open Flow Builder: Setup → Flows → Edit `<auto-flow-name>`
 2. **Replace Placeholder**:
    - Delete "Placeholder Assignment" element
    - Add External Service action
-   - Select `exec_ConvertedFromApex`
+   - Select `exec_<code-name>`
    - Map `payload` → `{}` (empty object) or use input variable
    - Map outputs → `{!ResultStatus}`
 3. **Add Error Handling** (optional):
